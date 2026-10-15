@@ -2731,5 +2731,5 @@ function drawBigMap(cx, g) {
   window.__mkw = { get game() { return game; }, start, select, Input, saveRun, ach, get diffId() { return diffId; } };
 })();
 </script>
-<script>try{if('serviceWorker' in navigator&&/^https?:/.test(location.protocol))navigator.serviceWorker.register('sw.js').catch(function(){})}catch(e){}</script>
+<script>try{if('serviceWorker' in navigator&&/^https?:/.test(location.protocol))var had=!!navigator.serviceWorker.controller;navigator.serviceWorker.addEventListener('controllerchange',function(){if(had&&!window.__rl){window.__rl=1;location.reload()}});navigator.serviceWorker.register('sw.js').catch(function(){})}catch(e){}</script>
 </html>
