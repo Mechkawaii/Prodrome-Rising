@@ -185,7 +185,7 @@ const TUNE = {
 };
 for (const t of TRACKS) Object.assign(t, TUNE[t.id] || {});
 const TRACK_BY = id => TRACKS.findIndex(t => t.id === id);
-const FLOOR_TRACKS = [['faubourg', 'pluie'], ['metro', 'fonderie'], ['egout', 'reacteur'], ['jungle', 'pluie'], ['brasier', 'citadelle'], ['reacteur', 'citadelle']];
+const FLOOR_TRACKS = [['faubourg'], ['metro'], ['egout'], ['jungle'], ['brasier'], ['citadelle']];  // un morceau par secteur (version calme + version combat)
 const Music = {
   playing: false, step: 0, next: 0, tempo: 108, cur: -1, want: 0, trans: 0, mel: null, timer: null, nb: null, gain: null,
   ensure() {
@@ -217,14 +217,15 @@ const Music = {
   mood(floor, type, depth, fight) {
     const f = Math.max(1, Math.min(6, floor || 1));
     let id;
-    if (type === 'boss' || fight) id = 'boss';
+    if (type === 'boss') id = 'boss';
     else if (type === 'shop' || type === 'heal' || type === 'item' || type === 'vault') id = 'boutique';
-    else id = FLOOR_TRACKS[f - 1][(depth || 0) & 1];
-    this.want = TRACK_BY(id); this.trans = type === 'boss' ? [0, -2, 3, 5, -4, 1][f - 1] : [0, 0, 0, 3, 0, -3][f - 1]; this.fl = f;
+    else id = FLOOR_TRACKS[f - 1][0];
+    this.want = TRACK_BY(id); this.trans = type === 'boss' ? [0, -2, 3, 5, -4, 1][f - 1] : [0, 0, 0, 3, 0, -3][f - 1]; this.fl = f; this.wantFast = !!fight && type !== 'boss';
     if (this.cur < 0) this.load(this.want);
   },
+  tempoFor(T) { return Math.min(T.boss ? 152 : 158, Math.round(T.tempo * .93 * (this.fast ? 1.25 : 1))); },
   load(i) {
-    this.cur = i; const T = TRACKS[i]; this.tempo = Math.round(T.tempo * .93); this.step = 0; this.mel = this.genMel(T); try { if (this.dly) this.dly.delayTime.setValueAtTime(60 / (T.tempo * .93) * .75, Sound.ctx.currentTime); } catch (e) { }
+    this.cur = i; this.fast = !!this.wantFast; const T = TRACKS[i]; this.tempo = this.tempoFor(T); this.step = 0; this.mel = this.genMel(T); try { if (this.dly) this.dly.delayTime.setValueAtTime(60 / this.tempoFor(T) * .75, Sound.ctx.currentTime); } catch (e) { }
   },
   genMel(T) {
     // riff façon Carpenter Brut : motif de 2 mesures, note pédale grave qui revient, sauts de quarte/quinte, phrygien
@@ -246,7 +247,7 @@ const Music = {
     if (this.next < c.currentTime - .3) this.next = c.currentTime + .05;
     let n = 0;
     while (this.next < c.currentTime + .2 && n++ < 8) {
-      if ((this.step & 15) === 0 && this.want !== this.cur && this.want >= 0) this.load(this.want);
+      if ((this.step & 15) === 0) { if (this.want !== this.cur && this.want >= 0) this.load(this.want); else if (!!this.wantFast !== !!this.fast) { this.fast = !!this.wantFast; this.tempo = this.tempoFor(TRACKS[this.cur]); try { this.dly.delayTime.setValueAtTime(60 / this.tempo * .75, Sound.ctx.currentTime); } catch (e) { } } }
       const T = TRACKS[this.cur]; this.seq(this.step, this.next, T);
       this.next += 15 / this.tempo; this.step = (this.step + 1) & 255;
     }
@@ -287,7 +288,7 @@ const Music = {
     const root = hz((((ch[0] + this.trans) % 12) + 12) % 12) * .794, tones = CH[ch[1]], nt = tones.length, sd = 15 / this.tempo;
     const t = T.swing && (s & 1) ? t0 + sd * T.swing : t0;
     const fq = (base, semi) => base * Math.pow(2, semi / 12);
-    const P = x => Array.isArray(x) ? x[sec] : x;
+    const P = x => Array.isArray(x) ? x[this.fast ? 1 : sec] : x;
     const brk = bar === 14 || bar === 15, fill = (bar & 3) === 3, last = bar === 15, calm = !!T.calm, soft = T.soft ? .6 : 1;
     const hard = T.lead === 'sawtooth' || T.bassW === 'sawtooth';
     // nappe : accord large désaccordé, filtre lent
@@ -309,7 +310,7 @@ const Music = {
     } else if (s === 0 || s === 8) { this.saw(root * 2, t, sd * 7, .045 * soft, { c0: 900, c1: 200, q: 4 }); this.n(root, t, sd * 7, 'sine', .07); }
     // arpège
     if (T.arp) {
-      const pat = P(T.arp), every = T.arpEvery || 2, idxs = pat.length === 16 ? pat[s] : pat[s & 7];
+      const pat = P(T.arp), every = this.fast ? 1 : (T.arpEvery || 2), idxs = pat.length === 16 ? pat[s] : pat[s & 7];
       if ((pat.length === 16 || s % every === 0 || every === 1) && !(brk && s % 4)) {
         const oct = (s >= 8 ? 12 : 0) + (sec && (bar & 1) ? 12 : 0), base = root * (T.arpOct || 4) * .5, nf = fq(base, tones[idxs % nt] + oct);
         if (T.arpW === 'sawtooth') this.saw(nf, t, sd * 1.5, (T.arpGain || .016) * soft * (brk ? .7 : 1) * 1.1, { det: 6, c0: 2300, c1: 700, q: 4, hold: .3, send: .5, rv: .1 });
