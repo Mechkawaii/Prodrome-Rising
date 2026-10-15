@@ -288,3 +288,43 @@ const SYNERGIES = [
 
 const SLOTS = [['def', 'BLINDAGE', '#38a8ff'], ['atk', 'ATTAQUE', '#ff6a2a'], ['mod', 'MODULES', '#7dff6a'], ['ano', 'ANOMALIES', '#b36bff']];
 const SLOTCOL = { def: '#38a8ff', atk: '#ff6a2a', mod: '#7dff6a', ano: '#b36bff' };
+
+/* ---------- Encyclopédie : récits (débloqués à la première rencontre) ---------- */
+const ENCY = {
+  h: {
+    sheepard: ['Général Sheepard', 'Commandement', 'Chef des Mechkawaii. Depuis la salle radio, il coordonne la riposte contre l\'invasion prodrome. Il parle peu, mais chaque ordre compte : il sait que la moindre erreur coûte une planète.'],
+    johanna: ['Raiden, la Grenadière', 'Elle ne recule jamais devant le danger, et ses grenades font le reste. Johanna pense qu\'une bonne trajectoire vaut mieux qu\'un long discours. Sur le terrain, son calme rassure toute l\'escouade.'],
+    banado: ['Uzume, la Technicienne', 'Banado répare, bricole et sacrifie son propre bouclier pour protéger les autres. Sans elle, l\'escouade n\'aurait pas tenu une semaine. Elle ne laisse personne derrière.'],
+    fuyu: ['Fujin, la Pyrotechnicienne', 'Fuyu a l\'âme d\'une vétérane : elle est persuadée que cette guerre durera des siècles, et elle compte bien la commencer par un coup de feu. Les flammes sont sa signature.'],
+    meimei: ['Amaterasu, l\'Éclaireuse', 'Rapide et toujours en avance, Mei Mei repère les Prodromes avant qu\'ils ne la voient. Son système de camouflage lui permet de traverser les murs, un secret qu\'elle garde jalousement.'],
+    yamabato: ['Ryujin, la Voltigeuse', 'Yamabato préfère voler plutôt que marcher, et tirer plutôt que viser. Elle fonce dans le tas avec un sourire de casse-cou. Pour elle, le carnage reste la meilleure des solutions.'],
+    duke: ['Saruta-Hiko, le Démineur', 'Duke connaît chaque mine, chaque piège, chaque fil. Il pose les siennes avec la même patience. Les Prodromes apprennent vite à regarder où ils mettent les pieds.'],
+    khurt: ['Tsukuyomi, le Tireur d\'élite', 'Khurt tire peu, mais jamais pour rien. Il attend le moment parfait, parfois plusieurs minutes, puis abat sa cible d\'un seul coup. On ne l\'entend jamais arriver.'],
+    faline: ['Hachiman, la Cartographe', 'Faline a cartographié chaque recoin de la planète envahie. Elle sait où sont les passages secrets, et surtout où ne pas aller. Sa mémoire vaut tous les radars.'],
+    rasmus: ['Inari, le Bombardier', 'Rasmus lance ses charges de très haut et rit de loin. Son arsenal est lent à recharger, mais ses explosions dessinent des cratères que l\'on retrouve sur toutes les cartes.'],
+    rhoney: ['Omoikane, l\'Armurier', 'Blindé de la tête aux pieds, Rhoney avance sans broncher sous le feu. Il connaît l\'armement prodrome mieux que ses propres créateurs, et s\'en sert pour s\'équiper.']
+  },
+  e: {
+    genbu: ['Technicien prodrome', 'Il garde les lignes arrière et protège ses alliés avec un bouclier d\'énergie. Plus lent que ses congénères, il compense par une étonnante capacité à rester en vie.'],
+    goryo: ['Grenadier prodrome', 'Un lourdaud qui lance ses explosifs par-dessus les obstacles. Peu mobile, très dangereux à distance. Les Mechkawaii l\'évitent plutôt qu\'ils ne l\'affrontent.'],
+    goki: ['Pyrotechnicien prodrome', 'Rapide, nerveux, incendiaire. Goki déteste l\'eau comme le calme : il fonce au contact et enflamme tout sur son passage.'],
+    gaoro: ['Éclaireur prodrome', 'Petit et agile, il traque ses cibles en meute. Il ne cause pas de gros dégâts à lui seul, mais ses cris attirent toujours du renfort.'],
+    gyuki: ['Voltigeur prodrome', 'Il survole le champ de bataille et pique sur les Mechkawaii sans prévenir. Impossible à semer à pied, simple à abattre à qui garde son sang-froid.'],
+    shojo: ['Démineur prodrome', 'Il pose et dissimule des charges un peu partout. Quand il tombe, il explose : mieux vaut le tuer de loin.'],
+    sojobo: ['Cartographe prodrome', 'Il scrute le terrain depuis ses ruines et transmet ses relevés aux autres Prodromes. Il connaît la planète presque aussi bien que ses habitants.'],
+    senpoku: ['Bombardier prodrome', 'Un appareil volant qui lâche ses charges depuis les hauteurs. Il passe son temps à tourner, jusqu\'à ce qu\'il trouve une cible.'],
+    samebito: ['Tireur d\'élite prodrome', 'Il prend son temps pour viser. Sa balle à fragmentation éclate en plusieurs morceaux : ne reste pas planté devant lui.'],
+    sankai: ['Armurier prodrome', 'Blindé de plaques d\'acier récupérées sur les champs de bataille, il encaisse beaucoup de tirs. Il forge aussi les armes de ses semblables.'],
+    nezumi: ['Rôdeur des égouts', 'Un rongeur mécanique qui surgit des canalisations. Il bondit sans réfléchir sur sa proie, puis recommence aussitôt.'],
+    koumori: ['Chauve-souris mécanique', 'Elle dort au plafond, puis fond en piqué sur sa cible. Elle ne vole pas en ligne droite, ce qui la rend imprévisible.'],
+    tsuta: ['Plante-tourelle', 'Mi-végétal, mi-machine, elle prend racine et crache des spores en cloche. Elle ne bouge jamais, mais son territoire est mortel.']
+  },
+  b: {
+    sankai: ['Sankai, l\'Armurier', 'Premier gardien des faubourgs. Il tient le grand carrefour avec un blindage massif. Il pense que la meilleure défense, c\'est de ne rien laisser passer.'],
+    senpoku: ['Senpoku, le Bombardier', 'Il hante les quais du métro. Du haut de sa plateforme volante, il pilonne tout ce qui bouge. Il refuse de poser le pied au sol.'],
+    genbu: ['Genbu, le Gardien des profondeurs', 'Gardien du nid, il se terre derrière son bouclier au cœur des galeries. Il surveille l\'entrée depuis des années, sans jamais dormir.'],
+    gaoro: ['Gaoro, le Chasseur de la canopée', 'Alpha de la meute qui rôde dans la jungle contaminée. Il bondit de branche en branche et ne laisse jamais ses proies s\'échapper.'],
+    goki: ['Goki, le Brasier ambulant', 'Il garde le réacteur et les tours de communication. Prêt à tout faire sauter si les Mechkawaii approchent, quitte à tout perdre.'],
+    goryo: ['Goryo, le Rayon orbital', 'Commandant de l\'invasion depuis le vaisseau mère. Il surveille la planète de là-haut et, de son rayon, la frappe à volonté. Tout part de lui.']
+  }
+};

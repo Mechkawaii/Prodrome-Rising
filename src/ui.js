@@ -61,12 +61,12 @@
   select('johanna');
 
   /* ---------- Écrans ---------- */
-  const SCR = ['title', 'select', 'over', 'achScr', 'optScr'];
+  const SCR = ['title', 'select', 'over', 'achScr', 'optScr', 'encScr'];
   function show(id) { SCR.forEach(s => $(s).hidden = s !== id); if (id === 'title') refreshTitle(); }
   function refreshTitle() {
       $('btnContinue').hidden = !lsGet('mkw-ruins-save', null);
     const n = ACH.filter(a => ach[a.id]).length;
-    $('btnAch').textContent = 'Succès ' + n + '/' + ACH.length;
+    $('btnAch').textContent = 'Succès ' + n + '/' + ACH.length; { const q = encCount(); $('btnEncy').textContent = 'Encyclopédie ' + q[0] + '/' + q[1]; }
     $('dailyLbl').textContent = 'Même carte pour tous · ' + String(TODAY).replace(/(\d{4})(\d{2})(\d{2})/, '$3/$2/$1');
   }
   function openSelect(daily) {
@@ -83,6 +83,37 @@
   $('btnContinue').onclick = () => { audio(); const s = lsGet('mkw-ruins-save', null); if (s) start(s); };
   $('btnAch').onclick = () => { renderAch(); show('achScr'); };
   $('btnAchBack').onclick = () => show('title');
+  /* ---------- Encyclopédie ---------- */
+  let encTab = 'h', encSel = null;
+  const encIds = t => t === 'h' ? ['sheepard'].concat(HEROES.map(q => q.id)) : t === 'e' ? PRO_IDS.filter(i => ENEMY[i]) : BOSSES.map(q => q.id);
+  function encSprite(t, id) {
+    const c = document.createElement('canvas'); c.width = 16; c.height = 16; const x = c.getContext('2d'); x.imageSmoothingEnabled = false;
+    try { if (t === 'h' && id === 'sheepard') { x.fillStyle = '#0d1f1a'; x.fillRect(0, 0, 16, 16); x.fillStyle = '#3dffb0'; x.fillRect(3, 3, 10, 10); x.fillStyle = '#0d1f1a'; x.fillRect(4, 4, 8, 8); x.fillStyle = '#3dffb0'; x.fillRect(6, 6, 4, 4); } else x.drawImage((t === 'h' ? Atlas.hero[id] : Atlas.pro[id])[0].canvas(), 0, 0); } catch (e) { }
+    return c;
+  }
+  function encName(t, id) { return t === 'h' ? (id === 'sheepard' ? 'Sheepard' : HERO[id].name) : t === 'e' ? ENEMY[id].name : BOSSES.find(q => q.id === id).name; }
+  function encCount() { let n = 0, tot = 0; for (const t of ['h', 'e', 'b']) for (const id of encIds(t)) { tot++; if (Ency.has(t + ':' + id)) n++; } return [n, tot]; }
+  function renderEncy() {
+    document.querySelectorAll('#encTabs button').forEach(b => b.classList.toggle('on', b.dataset.t === encTab));
+    const [n, tot] = encCount(); $('encCount').textContent = n + ' / ' + tot + ' articles débloqués';
+    const gr = $('encGrid'); gr.innerHTML = ''; const ids = encIds(encTab);
+    if (!encSel || !ids.includes(encSel)) encSel = ids[0];
+    ids.forEach(id => {
+      const k = encTab + ':' + id, ok = Ency.has(k), el = document.createElement('button'); el.className = 'ec' + (ok ? '' : ' lock') + (id === encSel ? ' on' : '');
+      el.appendChild(encSprite(encTab, id)); const sp = document.createElement('span'); sp.textContent = ok ? encName(encTab, id) : '???'; el.appendChild(sp);
+      el.onclick = () => { encSel = id; renderEncy(); }; gr.appendChild(el);
+    });
+    const k = encTab + ':' + encSel, ok = Ency.has(k), d = $('encDet'); d.innerHTML = '';
+    const cv = encSprite(encTab, encSel); if (!ok) cv.style.filter = 'brightness(0) opacity(.5)'; d.appendChild(cv);
+    const add = (cls, txt) => { const s = document.createElement('div'); if (cls) s.className = cls; s.innerHTML = txt; d.appendChild(s); };
+    if (!ok) { add('nm', '???'); add('', encTab === 'h' ? 'Joue ce Mechkawaii pour débloquer son article.' : encTab === 'b' ? 'Affronte ce boss pour débloquer son article.' : 'Rencontre ce Prodrome pour débloquer son article.'); return; }
+    const E = ENCY[encTab][encSel]; add('nm', encName(encTab, encSel).toUpperCase());
+    if (encTab === 'h') { const hd = HEROES.find(q => q.id === encSel); if (hd) { add('sb', hd.cls + ' · ' + hd.code); add('', hd.classTxt); add('', '★ <b>' + hd.ultName + '</b> : ' + hd.ultTxt); } else add('sb', E[1]); add('', E[2]); if (hd && hd.motto) add('mt', hd.motto); }
+    else { const en = ENEMY[encSel], bd = BOSSES.find(q => q.id === encSel); add('sb', encTab === 'e' ? E[0] : bd.title); add('', E[1]); add('mt', encTab === 'e' ? 'PV de base : ' + en.hp : 'PV de base : ' + bd.hp); add('kl', 'Éliminés : ' + (Ency.d.kills[k] || 0)); }
+  }
+  document.querySelectorAll('#encTabs button').forEach(b => b.onclick = () => { encTab = b.dataset.t; encSel = null; renderEncy(); });
+  $('btnEncy').onclick = () => { renderEncy(); show('encScr'); };
+  $('btnEncBack').onclick = () => show('title');
   /* ---------- Options ---------- */
   let optFrom = 'title', rstArm = 0;
   const saveOpts = () => lsSet('mkw-opts', Opts);
@@ -151,7 +182,7 @@
   };
   function say(key, extra) {
     const h = game ? game.def.name : 'pilote', b = extra || '';
-    radioQ.push((RADIO[key] || []).map(t => t.replace('{h}', h).replace('{b}', b)));
+    Ency.see('h:sheepard'); radioQ.push((RADIO[key] || []).map(t => t.replace('{h}', h).replace('{b}', b)));
     if (!radio) nextRadio();
   }
   function nextRadio() {
@@ -333,7 +364,7 @@
     if (save) { diffId = save.diff; dailyMode = !!save.daily; }
     game = new Game(save ? save.hero : sel, { diff: diffId, daily: dailyMode ? TODAY : 0 });
     if (save) restore(save);
-    lastFloor = 0;
+    lastFloor = 0; Ency.see('h:' + game.def.id);
     Input.reset(); running = true; paused = false; acc = 0; last = 0;
     $('lvlBox').hidden = true; choosing = null; radio = null; hack = null; inv = null; $('invBox').hidden = true; $('hackBox').hidden = true; mapOpen = false; mapSel = false; $('mapBox').hidden = true; radioQ.length = 0; $('radio').hidden = true; finalOk = false; winSaid = false; lastBoss = 0; $('hud').hidden = false;
     SCR.forEach(s => $(s).hidden = true);

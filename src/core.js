@@ -41,6 +41,15 @@ const KEYMAP = {
 };
 
 /* ---------- Audio (synthèse WebAudio) ---------- */
+const Ency = {
+  d: { seen: {}, kills: {} },
+  load() { try { const o = JSON.parse(localStorage.getItem('mkw-ency') || '{}'); this.d.seen = o.seen || {}; this.d.kills = o.kills || {}; } catch (e) { } },
+  save() { try { localStorage.setItem('mkw-ency', JSON.stringify(this.d)); } catch (e) { } },
+  see(k) { if (this.d.seen[k]) return false; this.d.seen[k] = 1; this.save(); return true; },
+  kill(k) { this.d.kills[k] = (this.d.kills[k] || 0) + 1; this.d.seen[k] = 1; this.save(); },
+  has(k) { return !!this.d.seen[k]; }
+};
+Ency.load();
 const Opts = { mus: 1, sfx: 1, shake: 1, ptxt: 1, pad: 1, vib: 1, padS: 1, crt: 1, aim: 1, uiz: 0 };
 try { Object.assign(Opts, JSON.parse(localStorage.getItem('mkw-opts') || '{}')); } catch (e) { }
 const Sound = {

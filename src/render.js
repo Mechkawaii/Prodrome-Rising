@@ -348,7 +348,7 @@ function drawEnemy(ctx, e, g) {
   if (e.freeze > 0) { ctx.fillStyle = 'rgba(142,232,255,.4)'; ctx.fillRect(e.x - 1, e.y - 1, e.w + 2, e.h + 2); ctx.strokeStyle = '#d6f6ff'; ctx.strokeRect(e.x - .5, e.y - .5, e.w + 1, e.h + 1); }
   if (e.stun > 0) { drawText(ctx, '*', e.cx - 1, e.y - 8, '#ffe38a'); }
   if (e.st === 'windup') drawText(ctx, '!', e.cx - 1, e.y - 9, '#ff4a4a');
-  if (e.hp < e.maxhp && e.maxhp >= 8) { ctx.fillStyle = '#12081f'; ctx.fillRect(e.x - 1, e.y - 6, e.w + 2, 3); ctx.fillStyle = e.elite ? '#ffd23a' : '#5dff6a'; ctx.fillRect(e.x, e.y - 5, Math.max(0, Math.round(e.w * e.hp / e.maxhp)), 1); }
+  if (!e.boss) { ctx.fillStyle = '#12081f'; ctx.fillRect(e.x - 1, e.y - 6, e.w + 2, 3); ctx.fillStyle = e.elite ? '#ffd23a' : '#5dff6a'; ctx.fillRect(e.x, e.y - 5, Math.max(0, Math.round(e.w * e.hp / e.maxhp)), 1); }
 }
 
 function drawHUD(ctx, g) {

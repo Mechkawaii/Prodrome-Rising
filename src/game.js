@@ -330,14 +330,16 @@ class Game {
     if (e.hp <= 0) this.killEnemy(e);
     return true;
   }
-  killEnemy(e) {
+  pushE(e) { this.enemies.push(e); Ency.see((e.boss ? 'b:' : 'e:') + e.type); }
+  killEnemy(e, collateral) {
     const i = this.enemies.indexOf(e); if (i >= 0) this.enemies.splice(i, 1);
+    if (!collateral) Ency.kill((e.boss ? 'b:' : 'e:') + e.type);
     this.kills++; this.score += e.boss ? 500 : 10; this.hitstop = 3; this.addXp(e.boss ? 12 : e.elite ? 3 : 1);
     if (this.p.st.vamp && this.kills % Math.max(4, 12 - this.p.st.vamp * 3) === 0) this.heal(this.p, 1);
     this.fx(e.cx, e.cy, e.boss ? 60 : 16, '#5dff6a', e.boss ? 4 : 2.5); this.fx(e.cx, e.cy, 8, '#fff', 2); this.sfx('kill'); this.shake(e.boss ? 10 : 2);
     this.p.ult = Math.min(100, this.p.ult + 6 * this.p.st.ultRate);
     if (e.type === 'shojo' && !e.boss) { this.explode(e.cx, e.cy, 30, 1, false, '#ff7a2a'); }
-    if (e.boss) { this.ebullets = []; this.hazards = []; this.emines = []; for (const o of this.enemies.slice()) this.killEnemy(o); this.bossDead(e); return; }
+    if (e.boss) { this.ebullets = []; this.hazards = []; this.emines = []; for (const o of this.enemies.slice()) this.killEnemy(o, true); this.bossDead(e); return; }
     this.dropCoins(e.cx, e.cy, e.elite ? 2 : rnd() < .2 ? 1 : 0);
     const r = rnd();
     if (r < .035) this.pickups.push({ type: 'heart', x: e.cx - 4, y: e.y, vy: -2, bob: 0 });
@@ -375,13 +377,13 @@ class Game {
       }
       const e = new Enemy(type, x, y, hpMul); e.spd *= 1 + (f - 1) * .06; e.spawnT = 30 + k * 8; if (!d.fly) e.y -= e.h - 14;
       if (chal || (r.depth >= 2 && rnd() < .06 + f * .035)) { e.elite = true; e.hp *= 1.7; e.maxhp = e.hp; }
-      this.enemies.push(e);
+      this.pushE(e);
     }
   }
   spawnBoss() {
     const B = BOSSES[this.floor - 1], e = new Enemy(B.id, W / 2 - 15, 60, 1);
     e.w = B.w; e.h = B.h; e.boss = B; e.hp = e.maxhp = Math.round(B.hp * .5 * this.diff.hp); e.spawnT = 30; e.fly = B.id === 'senpoku'; e.bt = 0; e.armor = B.id === 'sankai' ? .8 : 1; e.spd = { goryo: .28, genbu: .45, gaoro: .9, goki: .6 }[B.id] || .5;
-    this.enemies.push(e); this.sfx('boss'); this.shake(8); this.banner = B.name + ' - ' + B.title; this.bannerT = 140;
+    this.pushE(e); this.sfx('boss'); this.shake(8); this.banner = B.name + ' - ' + B.title; this.bannerT = 140;
   }
   bossDead(e) {
     this.stats.bossKills++; if (!this.stats.hurtFloor) this.stats.flawless = true;
@@ -803,7 +805,7 @@ class Game {
       if (e.bt % gap === gap - 1) {
         const k = e.pat = ((e.pat | 0) + 1) % 3;
         if (k === 0) { for (let i = -2; i <= 2; i++) this.ebul(e.cx, e.cy, ang + i * .22, 1.9, { bounce: 2, r: 3, color: '#cfc8ee', life: 320 }); this.sfx('shootH'); }
-        else if (k === 1) { if (this.enemies.length < 4) for (let i = 0; i < 2; i++) { const sp = pick(this.room.spawnPts), g2 = new Enemy('gaoro', sp[0], sp[1], 1.1); g2.spawnT = 30; this.enemies.push(g2); } this.sfx('warn'); }
+        else if (k === 1) { if (this.enemies.length < 4) for (let i = 0; i < 2; i++) { const sp = pick(this.room.spawnPts), g2 = new Enemy('gaoro', sp[0], sp[1], 1.1); g2.spawnT = 30; this.pushE(g2); } this.sfx('warn'); }
         else { e.vy = -6.2; e.slam = 1; e.onGround = false; }
       }
     } else if (id === 'senpoku') {
@@ -813,7 +815,7 @@ class Game {
         const k = e.pat = ((e.pat | 0) + 1) % 3;
         if (k === 0) { const n = ph === 2 ? 3 : 2; for (let i = 0; i < n; i++) this.hazards.push({ x: 0, y: clamp(tgt.cy - 4 + (i - (n - 1) / 2) * 38 + rr(-6, 6), 24, 150), w: W, h: 8, warn: 52, life: 16, dmg: 1, t: 0 }); this.sfx('warn'); }
         else if (k === 1) { e.rain = ph === 2 ? 9 : 6; }
-        else { if (this.enemies.length < 3) { const g2 = new Enemy('gyuki', e.cx, e.cy + 10, 1.2); g2.spawnT = 24; this.enemies.push(g2); } for (let i = -1; i <= 1; i++) this.ebul(e.cx, e.cy, ang + i * .25, 1.9, { color: '#c4ff6a' }); this.sfx('shoot'); }
+        else { if (this.enemies.length < 3) { const g2 = new Enemy('gyuki', e.cx, e.cy + 10, 1.2); g2.spawnT = 24; this.pushE(g2); } for (let i = -1; i <= 1; i++) this.ebul(e.cx, e.cy, ang + i * .25, 1.9, { color: '#c4ff6a' }); this.sfx('shoot'); }
       }
       if (e.rain > 0 && e.bt % 12 === 0) { e.rain--; this.ebullets.push({ x: rr(20, W - 20), y: 14, vx: 0, vy: 1.2, r: 3, dmg: 1, life: 200, grav: .05, bounce: 0, kind: 'bomb', explode: 20, color: '#ff7a5a' }); }
     } else if (id === 'genbu') {
@@ -822,7 +824,7 @@ class Game {
       if (e.bt % gap === gap - 1) {
         const k = e.pat = ((e.pat | 0) + 1) % 3;
         if (k === 0) { const n = ph === 2 ? 7 : 5; for (let i = 0; i < n; i++) this.ebul(e.cx, e.cy, ang + (i - (n - 1) / 2) * .2, 1.8, { color: '#8dff5a', r: 3 }); this.sfx('shootH'); }
-        else if (k === 1) { if (this.enemies.length < 4) for (let i = 0; i < 2; i++) { const sp = pick(this.room.spawnPts), g2 = new Enemy(ph === 2 ? 'koumori' : 'nezumi', sp[0], ph === 2 ? 60 : sp[1], 1.1); g2.spawnT = 30; g2.shieldHp = 1; this.enemies.push(g2); } this.sfx('warn'); }
+        else if (k === 1) { if (this.enemies.length < 4) for (let i = 0; i < 2; i++) { const sp = pick(this.room.spawnPts), g2 = new Enemy(ph === 2 ? 'koumori' : 'nezumi', sp[0], ph === 2 ? 60 : sp[1], 1.1); g2.spawnT = 30; g2.shieldHp = 1; this.pushE(g2); } this.sfx('warn'); }
         else { const n = ph === 2 ? 5 : 3; for (let i = 0; i < n; i++) this.hazards.push({ x: clamp(tgt.cx - 7 + (i - (n - 1) / 2) * 48 + rr(-8, 8), 8, W - 22), y: 0, w: 14, h: H, warn: 52, life: 18, dmg: 1, t: 0, col: '#8dff5a' }); this.sfx('warn'); }
       }
     } else if (id === 'gaoro') {
@@ -834,7 +836,7 @@ class Game {
         const k = e.pat = ((e.pat | 0) + 1) % 3;
         if (k === 0) { e.dashN = ph === 2 ? 2 : 1; e.dashing = 1; e.wait = 24; this.sfx('warn'); }
         else if (k === 1) { e.vy = -6.4; e.vx = Math.sign(dx) * 1.4; e.slam = 1; e.onGround = false; }
-        else { for (let i = -1; i <= 1; i++) this.ebullets.push({ x: e.cx, y: e.cy, vx: Math.cos(ang) * 2.0 + i * .5, vy: -2.4 + Math.sin(ang), r: 3, dmg: 1, life: 200, grav: .12, bounce: 1, kind: 'spore', color: '#ff9a4a' }); if (this.enemies.length < 4) { const sp = pick(this.room.spawnPts), g2 = new Enemy('tsuta', sp[0], sp[1] - 4, 1.1); g2.spawnT = 30; this.enemies.push(g2); } this.sfx('warn'); }
+        else { for (let i = -1; i <= 1; i++) this.ebullets.push({ x: e.cx, y: e.cy, vx: Math.cos(ang) * 2.0 + i * .5, vy: -2.4 + Math.sin(ang), r: 3, dmg: 1, life: 200, grav: .12, bounce: 1, kind: 'spore', color: '#ff9a4a' }); if (this.enemies.length < 4) { const sp = pick(this.room.spawnPts), g2 = new Enemy('tsuta', sp[0], sp[1] - 4, 1.1); g2.spawnT = 30; this.pushE(g2); } this.sfx('warn'); }
       }
     } else if (id === 'goki') {
       if (e.flame > 0) { e.vx *= .9; if (e.bt % 3 === 0) { this.ebul(e.cx, e.cy, ang + rr(-.16, .16), 2.6, { life: 22, r: 4, color: '#ff7a2a', kind: 'flame' }); } e.flame--; }
@@ -853,7 +855,7 @@ class Game {
         const k = e.pat = ((e.pat | 0) + 1) % 3;
         if (k === 0) { const n = ph === 2 ? 5 : 3; for (let i = 0; i < n; i++) { const tx = tgt.cx + (i - (n - 1) / 2) * 44, T0 = clamp(Math.abs(tx - e.cx) / 2.2, 34, 80), gr = .14, v = lobVel(tx - e.cx, tgt.cy - e.cy, T0, gr); this.ebullets.push({ x: e.cx, y: e.cy, vx: v.vx, vy: v.vy, r: 3, dmg: 1, life: 220, grav: gr, bounce: 0, kind: 'egrenade', explode: 22, color: '#ffb347' }); } this.sfx('shootH'); }
         else if (k === 1) { const n = ph === 2 ? 5 : 3; for (let i = 0; i < n; i++) this.hazards.push({ x: clamp(tgt.cx - 7 + (i - (n - 1) / 2) * 52 + rr(-8, 8), 8, W - 22), y: 0, w: 14, h: H, warn: 56, life: 18, dmg: 1, t: 0, col: '#ff4a6a' }); this.sfx('warn'); }
-        else { if (this.enemies.length < 3) for (let i = 0; i < 2; i++) { const sp = pick(this.room.air), g2 = new Enemy(ph === 2 ? 'gyuki' : 'goki', sp[0], sp[1], 1.1); g2.spawnT = 30; this.enemies.push(g2); } for (let i = -1; i <= 1; i++) this.ebul(e.cx, e.cy, ang + i * .2, 2, { color: '#c4ff6a' }); this.sfx('warn'); }
+        else { if (this.enemies.length < 3) for (let i = 0; i < 2; i++) { const sp = pick(this.room.air), g2 = new Enemy(ph === 2 ? 'gyuki' : 'goki', sp[0], sp[1], 1.1); g2.spawnT = 30; this.pushE(g2); } for (let i = -1; i <= 1; i++) this.ebul(e.cx, e.cy, ang + i * .2, 2, { color: '#c4ff6a' }); this.sfx('warn'); }
       }
     }
   }
