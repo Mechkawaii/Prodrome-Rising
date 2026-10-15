@@ -1395,10 +1395,10 @@ class Game {
     if (e.boss) { this.ebullets = []; this.hazards = []; this.emines = []; for (const o of this.enemies.slice()) this.killEnemy(o); this.bossDead(e); return; }
     this.dropCoins(e.cx, e.cy, e.elite ? 4 : rnd() < .6 ? 1 : rnd() < .25 ? 2 : 0);
     const r = rnd();
-    if (r < .09) this.pickups.push({ type: 'heart', x: e.cx - 4, y: e.y, vy: -2, bob: 0 });
+    if (r < .035) this.pickups.push({ type: 'heart', x: e.cx - 4, y: e.y, vy: -2, bob: 0 });
     else if (r < .15) this.pickups.push({ type: 'shield', x: e.cx - 4, y: e.y, vy: -2, bob: 0 });
     else if (r < .165 && this.floor > 1) this.pickups.push({ type: 'cell', x: e.cx - 4, y: e.y, vy: -2, bob: 0 });
-    if (e.elite) { this.pickups.push({ type: 'heart', x: e.cx - 4, y: e.y, vy: -2, bob: 0 }); if (rnd() < .3) this.pickups.push({ type: 'key', x: e.cx - 4, y: e.y, vy: -2, bob: 0 }); }
+    if (e.elite) { if (this.room.type !== 'challenge' && rnd() < .3) this.pickups.push({ type: 'heart', x: e.cx - 4, y: e.y, vy: -2, bob: 0 }); if (rnd() < .3) this.pickups.push({ type: 'key', x: e.cx - 4, y: e.y, vy: -2, bob: 0 }); }
   }
   hurtPlayer(dmg, sx) {
     const p = this.p; if (p.inv > 0 || this.state !== 'play') return false;
@@ -1495,7 +1495,7 @@ class Game {
       const tallR = r.rows > ROWS, dx = tallR ? clamp(p.cx, 28, W - 40) : W / 2, dy = tallR ? p.cy - 22 : 90;
       this.dropCoins(dx, dy - 10, ri(3, 5));
       const k = rnd();
-      if (p.hp < p.maxhp && k < .45) this.pickups.push({ type: 'heart', x: dx - 4, y: dy, vy: -1, bob: 0 });
+      if (p.hp < p.maxhp && k < .35) this.pickups.push({ type: 'heart', x: dx - 4, y: dy, vy: -1, bob: 0 });
       else if (k < .72) this.pickups.push({ type: 'shield', x: dx - 4, y: dy, vy: -1, bob: 0 });
       if (rnd() < .10) this.pickups.push({ type: 'key', x: dx + 6, y: dy, vy: -1, bob: 0 });
       if (rnd() < .20) { const q = this.standSpot(ri(60, 250)); if (q) this.pickups.push({ type: 'crate', x: q[0], y: q[1], bob: rnd() * 6 }); }
