@@ -395,6 +395,7 @@ function drawHUD(ctx, g) {
     ctx.globalAlpha = q.visited ? 1 : .55; ctx.fillStyle = col; ctx.fillRect(x, y, 7, th); ctx.globalAlpha = 1;
     if (q.rows > ROWS) { ctx.fillStyle = 'rgba(0,0,0,.25)'; ctx.fillRect(x, y + 5, 7, 2); }
     if (q.tp && q.visited) { ctx.fillStyle = q.tp.active ? '#38e8ff' : '#3a5a7a'; ctx.fillRect(x + 5, y, 2, 2); }
+    if (q.visited) { const lt = roomLoot(g, q); if (lt.h) { ctx.fillStyle = '#ff3a5a'; ctx.fillRect(x, y + th - 2, 2, 2); } if (lt.s) { ctx.fillStyle = '#4aa8ff'; ctx.fillRect(x + 5, y + th - 2, 2, 2); } }
     if (q === cur) { ctx.fillStyle = '#fff'; const hy = q.rows > ROWS ? Math.min(th - 4, Math.max(0, Math.round((p.cy / (q.rows * T)) * th) - 1)) : 1; ctx.fillRect(x + 2, y + hy, 3, 3); }
   }
   drawText(ctx, 'SECTEUR ' + g.floor + '/6', W - 4, mgy + gh * ph + 1, '#cdb8ee', 1, 'r');
@@ -447,13 +448,16 @@ function drawBigMap(cx, g, sel) {
     drawText(cx, !q.visited ? (tall ? 'VERTICAL' : '?') : tall ? 'VERTICAL' : (NAME[q.type] || ''), x + bw / 2, y + 3, q.visited ? '#0d0818' : '#8a7ab0', 1, 'c');
     if (q.cleared && q.type === 'combat') drawText(cx, 'OK', x + bw / 2, y + bh - 9, '#0d0818', 1, 'c');
     if (q.tp && q.visited) { const ac = q.tp.active, tx = x + bw - 9, ty = y + th - 9; cx.fillStyle = '#0d0818'; cx.fillRect(tx - 1, ty - 1, 9, 9); cx.fillStyle = ac ? '#38e8ff' : '#4a6a8a'; cx.fillRect(tx + 2, ty, 3, 7); cx.fillRect(tx, ty, 7, 2); }
+    if (q.visited) { const lt = roomLoot(g, q); let ox = x + 3; const oy = y + th - 12;
+      if (lt.h) { cx.fillStyle = '#0d0818'; cx.fillRect(ox - 1, oy - 1, 10, 9); cx.fillStyle = '#ff3a5a'; cx.fillRect(ox, oy, 3, 3); cx.fillRect(ox + 4, oy, 3, 3); cx.fillRect(ox, oy + 2, 7, 2); cx.fillRect(ox + 1, oy + 4, 5, 1); cx.fillRect(ox + 2, oy + 5, 3, 1); ox += 11; }
+      if (lt.s) { cx.fillStyle = '#0d0818'; cx.fillRect(ox - 1, oy - 1, 10, 9); cx.fillStyle = '#4aa8ff'; cx.fillRect(ox, oy, 7, 4); cx.fillRect(ox + 1, oy + 4, 5, 2); cx.fillRect(ox + 2, oy + 6, 3, 1); } }
     if (sel && q.tp && q.tp.active && q !== g.room) { cx.strokeStyle = g.frame % 30 < 18 ? '#38e8ff' : '#ffffff'; cx.lineWidth = 2; cx.strokeRect(x - 3, y - 3, bw + 6, th + 6); }
     if (q === g.room) { if (g.frame % 40 < 28) { cx.fillStyle = '#fff'; const hy = tall ? Math.min(th - 8, Math.max(0, Math.round(g.p.cy / (q.rows * T) * th) - 3)) : bh / 2 - 1; cx.fillRect(x + bw / 2 - 3, y + hy, 7, 7); cx.fillStyle = '#12081f'; cx.fillRect(x + bw / 2 - 1, y + hy + 2, 3, 3); } }
   }
   // légende
   let lx = 12; const ly = CH - 30;
   for (const [k, c] of [['DEPART', '#8a7ab0'], ['COMBAT', '#c04060'], ['OBJET', '#ffd23a'], ['SOIN', '#ff5cc8'], ['ATELIER', '#ffe38a'], ['CACHE', '#8ee8ff'], ['DEFI', '#ff9a4a'], ['BOSS', '#ff3a6a']]) { cx.fillStyle = c; cx.fillRect(lx, ly, 6, 6); drawText(cx, k, lx + 9, ly, '#cdb8ee', 1); lx += 9 + textW(k) + 9; }
-  dot(18, CH - 12); drawText(cx, 'PASSAGE', 28, CH - 15, '#9a8abb', 1); cx.fillStyle = '#38e8ff'; cx.fillRect(74, CH - 15, 3, 7); cx.fillRect(72, CH - 15, 7, 2); drawText(cx, 'BORNE ACTIVE', 84, CH - 15, '#9a8abb', 1);
+  dot(18, CH - 12); drawText(cx, 'PASSAGE', 28, CH - 15, '#9a8abb', 1); cx.fillStyle = '#38e8ff'; cx.fillRect(74, CH - 15, 3, 7); cx.fillRect(72, CH - 15, 7, 2); drawText(cx, 'BORNE ACTIVE', 84, CH - 15, '#9a8abb', 1); cx.fillStyle = '#ff3a5a'; cx.fillRect(160, CH - 15, 6, 6); drawText(cx, 'PV A RAMASSER', 170, CH - 15, '#9a8abb', 1); cx.fillStyle = '#4aa8ff'; cx.fillRect(246, CH - 15, 6, 6); drawText(cx, 'BOUCLIER', 256, CH - 15, '#9a8abb', 1);
   drawText(cx, 'SALLE VERTICALE = PLUSIEURS ETAGES', CW - 12, CH - 15, '#9a8abb', 1, 'r');
 }
 
@@ -484,4 +488,10 @@ function drawTP(ctx, room, g) {
     const msg = on ? 'SAUT : TELEPORTER' : lk ? 'VERROUILLE ' + Math.ceil(t.lock / 60) + 'S' : 'SAUT : PIRATER LA BORNE';
     drawText(ctx, msg, x + 28 + 1, fy - 37, '#12081f', 1, 'c'); drawText(ctx, msg, x + 28, fy - 38, on ? '#9ff4ff' : lk ? '#ff6a8a' : '#ffd9a0', 1, 'c');
   }
+}
+
+function roomLoot(g, q) {
+  const L = q === g.room ? g.pickups : q.pickups; let h = 0, s = 0;
+  if (L) for (const o of L) { if (o.type === 'heart') h++; else if (o.type === 'shield') s++; }
+  return { h, s };
 }

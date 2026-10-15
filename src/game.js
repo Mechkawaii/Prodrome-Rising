@@ -162,7 +162,7 @@ class Game {
       else { const ch = tpl[r - 1][c - 1]; t = ch === '#' ? 1 : ch === '=' ? 3 : 0; }
       tiles[r * COLS + c] = t;
     }
-    const room = { type, i, depth, rows: ROWS, gx: 0, gy: 0, exits: { L: null, R: null, U: null, D: null }, tiles, cleared: type === 'start' || type === 'shop' || type === 'vault', visited: false, wave: 0, waves: type === 'combat' ? 2 : type === 'challenge' ? 1 : 0, locked: false, pickups: null, spawnPts: [], air: [], entered: 0, rewardGiven: false, boss: false };
+    const room = { type, i, depth, rows: ROWS, gx: 0, gy: 0, exits: { L: null, R: null, U: null, D: null }, tiles, cleared: type === 'start' || type === 'shop' || type === 'vault', visited: false, wave: 0, waves: type === 'combat' ? 2 : type === 'challenge' ? 4 : 0, locked: false, pickups: null, spawnPts: [], air: [], entered: 0, rewardGiven: false, boss: false };
     room.tpl = tpl; return room;
   }
   // salle verticale : deux salles empilées, reliées par un puits de plateformes
@@ -212,7 +212,7 @@ class Game {
       else if (r.type === 'heal') this.setupHealRoom(r);
       else if (r.type === 'shop') this.setupShop(r);
       else if (r.type === 'vault') { this.stats.secret++; this.setupVault(r); }
-      else if (r.type === 'challenge') { this.stats.secret++; r.spawnTimer = 45; r.locked = true; this.banner = 'Défi : élites !'; this.bannerT = 120; }
+      else if (r.type === 'challenge') { this.stats.secret++; r.spawnTimer = 45; r.locked = true; r.hit = false; this.banner = 'Défi : 4 vagues d\'élites !'; this.bannerT = 120; }
       else if (r.type === 'combat') { r.spawnTimer = 45; r.locked = true; }
       else if (r.type === 'boss') { r.locked = true; r.bossTimer = 90; this.banner = ''; }
     }
@@ -344,10 +344,11 @@ class Game {
     const p = this.p; if (p.inv > 0 || this.state !== 'play') return false;
     if (p.dodge && rnd() < p.dodge) { p.inv = 40; this.text(p.cx, p.y - 8, 'ESQUIVE', '#ff9a2a'); this.fx(p.cx, p.cy, 14, '#ff9a2a', 2); this.sfx('shield'); return false; }
     if (p.armor > 0) {
+      this.room.hit = true;
       const ab = Math.min(p.armor, Math.max(1, Math.ceil(dmg))); p.armor -= ab; dmg -= ab; this.fx(p.cx, p.cy, 12, '#37e0ff', 2); this.sfx('shield'); this.shake(3); this.text(p.cx, p.y - 8, 'ARMURE', '#37e0ff');
       if (dmg <= 0) { p.inv = 70; if (sx !== undefined) { p.vx = Math.sign(p.cx - sx) * 1.2; } return true; }
     }
-    this.stats.hurtFloor = true; p.hp -= dmg; p.inv = 120 + (p.st.inv || 0) * 40; if (p.st.thorn && p.hp > 0) this.nova(p.cx, p.cy, '#8ee8ff', 3 * p.st.dmg, { kb: 3 }); p.flash = 8; this.shake(6); this.sfx('hurt'); this.fx(p.cx, p.cy, 14, '#ff4a6a', 2.5); this.flashT = 4;
+    this.stats.hurtFloor = true; this.room.hit = true; p.hp -= dmg; p.inv = 120 + (p.st.inv || 0) * 40; if (p.st.thorn && p.hp > 0) this.nova(p.cx, p.cy, '#8ee8ff', 3 * p.st.dmg, { kb: 3 }); p.flash = 8; this.shake(6); this.sfx('hurt'); this.fx(p.cx, p.cy, 14, '#ff4a6a', 2.5); this.flashT = 4;
     if (sx !== undefined) { p.vx = Math.sign(p.cx - sx) * 2.2; p.vy = -2.4; }
     if (p.hp <= 0) {
       if (p.revive) { p.revive = 0; p.hp = 2; p.inv = 150; this.nova(p.cx, p.cy, '#ff6a2a', 6 * p.st.dmg, { burn: 240 }); this.text(p.cx, p.y - 10, 'REVEIL ENFLAMME', '#ff6a2a'); this.sfx('ult'); }
@@ -359,7 +360,7 @@ class Game {
   /* ---------- Vagues ---------- */
   spawnWave() {
     const r = this.room, f = this.floor, pool = FLOOR_POOL[f - 1];
-    let n = Math.min(f >= 4 ? 5 : 4, 1 + Math.min(f, 4) + (r.depth >> 2)); if (r.wave > 0) n = Math.max(2, n - 1); n += this.diff.n; if (r.type === 'challenge') n = 3 + this.diff.n;
+    let n = Math.min(f >= 4 ? 5 : 4, 1 + Math.min(f, 4) + (r.depth >> 2)); if (r.wave > 0) n = Math.max(2, n - 1); n += this.diff.n; if (r.type === 'challenge') n = 3 + (r.wave >= 2 ? 1 : 0) + (f >= 4 ? 1 : 0) + this.diff.n;
     const hpMul = (1 + (f - 1) * .1 + r.depth * .02) * .55 * this.diff.hp, chal = r.type === 'challenge';
     for (let k = 0; k < n; k++) {
       const type = pick(pool), d = ENEMY[type]; let x, y;
@@ -442,6 +443,11 @@ class Game {
       if (r.depth % 2 === 1 || rnd() < .25) this.pickups.push({ type: 'cell', x: clamp(dx + 20, 24, W - 32), y: dy, vy: -1, bob: 0 });
     } else if (r.type === 'challenge') {
       this.dropCoins(W / 2, 80, 7); this.setupItemRoom(r, false); this.banner = 'Défi réussi !'; this.bannerT = 120;
+      if (!r.hit) {
+        this.banner = 'DÉFI PARFAIT ! Récompense bonus'; this.bannerT = 160; this.dropCoins(W / 2, 70, 12); this.addXp(4); this.sfx('win'); this.fx(W / 2, 90, 40, '#ffd23a', 4);
+        this.pickups.push({ type: 'heart', x: W / 2 - 30, y: 80, vy: -1, bob: 0 }, { type: 'shield', x: W / 2 + 22, y: 80, vy: -1, bob: 0 }, { type: 'key', x: W / 2 + 36, y: 80, vy: -1, bob: 0 });
+        const q = this.standSpot(W / 2 + 50); if (q) this.pickups.push({ type: 'crate', x: q[0], y: q[1], bob: 0 });
+      }
     }
   }
   addXp(n) {
