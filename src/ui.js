@@ -23,7 +23,6 @@
     { id: 'armed', name: 'Armé jusqu\'aux dents', desc: 'Équipe une arme.', t: g => !!g.p.weapon },
     { id: 'syn', name: 'Synergie', desc: 'Active une synergie d\'objets.', t: g => g.stats.syn >= 1 },
     { id: 'secret', name: 'Fouineur', desc: 'Entre dans une cache ou un défi.', t: g => g.stats.secret >= 1 },
-    { id: 'dash', name: 'Éclair', desc: 'Esquive 40 fois en une partie.', t: g => g.stats.dashes >= 40 },
     { id: 'daily', name: 'Run du jour', desc: 'Gagne un run du jour.', t: g => g.state === 'win' && g.daily }
   ];
 

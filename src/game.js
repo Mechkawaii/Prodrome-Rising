@@ -578,12 +578,6 @@ class Game {
     if (!Input.jump && p.vy < -2.2) p.vy *= .84;
     p.vy = Math.min(p.vy + .3, 7);
     if (def.flies && Input.jump && p.vy > .5 && p.hover > 0 && !p.onGround) { p.vy = .6; p.hover--; if (this.frame % 4 === 0) this.fx(p.cx, p.y + p.h, 1, '#ff7ad9', .8); }
-    if (p.dash < p.dashMax) { if (++p.dashCd >= 70) { p.dashCd = 0; p.dash++; } }
-    if (Input.dashPressed && p.dash > 0 && p.dashT <= 0) {
-      p.dash--; p.dashCd = 0; p.dashT = 9; p.dashDir = (Input.right - Input.left) || p.face; p.inv = Math.max(p.inv, 20);
-      this.stats.dashes++; this.sfx('dash'); this.fx(p.cx, p.cy, 8, '#ffffff', 1.5);
-    }
-    if (p.dashT > 0) { p.dashT--; p.vx = p.dashDir * 4.4; p.vy = 0; if (this.frame % 2 === 0) this.fx(p.cx, p.cy, 2, def.col, .8); }
     p.hitWall = false; this.moveEnt(p);
     if (p.y > this.room.rows * T + 20) { p.y = 100; }
     p.anim++;

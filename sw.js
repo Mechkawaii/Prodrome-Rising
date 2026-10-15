@@ -1,5 +1,5 @@
 // Prodrome Rising : cache hors ligne (le jeu se met à jour dès qu'il y a du réseau)
-const CACHE = 'prodrome-rising-v34';
+const CACHE = 'prodrome-rising-v35';
 const CORE = ['./', 'index.html', 'manifest.webmanifest', 'icons/icon-180.png', 'icons/icon-192.png', 'icons/icon-512.png'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(CORE)).then(() => self.skipWaiting())); });
 self.addEventListener('activate', e => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== CACHE).map(k => caches.delete(k)))).then(() => self.clients.claim())); });

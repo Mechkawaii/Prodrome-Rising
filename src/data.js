@@ -40,10 +40,10 @@ const HEROES = [
   },
   {
     id: 'meimei', name: 'Mei Mei', code: 'MKW_AMATERASU', cls: 'Éclaireur', col: '#b6ff4a', hp: 3, cd: 12,
-    classTxt: 'Rapide comme l\'éclair : très mobile, et elle esquive deux fois de suite (deux charges d\'esquive).',
+    classTxt: 'Rapide comme l\'éclair : très mobile et très agile.',
     ultName: 'Disruption visuelle', ultTxt: 'Rend tous les Mechkawaii invisibles 7 s : les Prodromes ne peuvent plus la prendre pour cible.',
     motto: '',
-    init(p) { p.st.pierce = 1; bump(p, 'spd', 1.12); p.dashMax = 2; p.dash = 2; },
+    init(p) { p.st.pierce = 1; bump(p, 'spd', 1.12); },
     fire(g, p, a) { g.shootP(p, a.ang + rr(-.04, .04), { speed: 3.8, dmg: .95, color: '#b6ff4a', life: 70 }); g.sfx('shoot'); },
     ult(g, p) { p.buff.ghost = 420; g.sfx('ult'); g.fx(p.cx, p.cy, 24, '#b6ff4a', 2.5); g.text(p.cx, p.y - 10, 'INVISIBLE', '#b6ff4a'); }
   },
@@ -268,7 +268,6 @@ const UPGRADES = [
   { id: 'u_arm', name: 'Plaques additionnelles', desc: '+1 armure maximum et +1 armure.', col: '#37e0ff', apply: p => { p.armorMax++; p.armor = Math.min(p.armorMax, p.armor + 1); } },
   { id: 'u_crit', name: 'Visée affinée', desc: 'Critiques +7 %.', col: '#ffe38a', apply: p => p.st.crit += .07 },
   { id: 'u_ult', name: 'Réacteur de coup unique', desc: 'Le coup unique se charge +20 % plus vite.', col: '#ffd23a', apply: p => p.st.ultRate *= 1.2 },
-  { id: 'u_dash', name: 'Propulseurs jumeaux', desc: '+1 charge d\'esquive.', col: '#ffffff', ok: p => p.dashMax < 3, apply: p => { p.dashMax++; p.dash++; } },
   { id: 'u_mag', name: 'Bobine magnétique', desc: 'Les objets sont attirés de plus loin.', col: '#ffd23a', ok: p => p.st.magnet < 3, apply: p => p.st.magnet++ },
   { id: 'u_jump', name: 'Jambes à ressort', desc: '+1 saut en l\'air.', col: '#7dff6a', ok: p => p.st.jumps < 3, apply: p => p.st.jumps++ },
   { id: 'u_heal', name: 'Réparation de campagne', desc: 'Soigne 3 PV et +2 armure.', col: '#ff5cc8', apply: (p, g) => { g.heal(p, 3); p.armor = Math.min(p.armorMax, p.armor + 2); } },
