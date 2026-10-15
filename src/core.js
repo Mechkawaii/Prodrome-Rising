@@ -50,26 +50,27 @@ const Ency = {
   has(k) { return !!this.d.seen[k]; }
 };
 Ency.load();
-const Opts = { mus: 1, sfx: 1, shake: 1, ptxt: 1, pad: 1, vib: 1, padS: 1, crt: 1, aim: 1, uiz: 0 };
+const Opts = { mus: 1, sfx: 1, shake: 1, ptxt: 1, pad: 1, vib: 1, padS: 1, crt: 1, aim: 1, uiz: 0, loud: 0 };
 try { Object.assign(Opts, JSON.parse(localStorage.getItem('mkw-opts') || '{}')); } catch (e) { }
 const Sound = {
   ctx: null, on: true,
   init() {
     // iOS / iPadOS : session « lecture » (ignore le switch silencieux) + élément audio muet + reprise du contexte à chaque geste
-    try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch (e) { }
-    if (!this.keep) {
+    try { if (navigator.audioSession) navigator.audioSession.type = Opts.loud ? 'playback' : 'ambient'; } catch (e) { }
+    if (!Opts.loud) { try { if (this.keep && !this.keep.paused) this.keep.pause(); } catch (e) { } }
+    if (Opts.loud && !this.keep) {
       try {
         const n = 400, b = new Uint8Array(44 + n), dv = new DataView(b.buffer), W = (o, s) => { for (let i = 0; i < s.length; i++) b[o + i] = s.charCodeAt(i); };
         W(0, 'RIFF'); dv.setUint32(4, 36 + n, true); W(8, 'WAVEfmt '); dv.setUint32(16, 16, true); dv.setUint16(20, 1, true); dv.setUint16(22, 1, true); dv.setUint32(24, 8000, true); dv.setUint32(28, 8000, true); dv.setUint16(32, 1, true); dv.setUint16(34, 8, true); W(36, 'data'); dv.setUint32(40, n, true); for (let i = 0; i < n; i++) b[44 + i] = 128;
         const a = new Audio(URL.createObjectURL(new Blob([b], { type: 'audio/wav' }))); a.loop = true; a.setAttribute('playsinline', ''); a.volume = .01; this.keep = a;
       } catch (e) { }
     }
-    try { if (this.keep && this.keep.paused) { const pr = this.keep.play(); if (pr && pr.catch) pr.catch(() => { }); } } catch (e) { }
+    try { if (Opts.loud && this.keep && this.keep.paused) { const pr = this.keep.play(); if (pr && pr.catch) pr.catch(() => { }); } } catch (e) { }
     if (!this.ctx) { try { const AC = window.AudioContext || window.webkitAudioContext; if (AC) { this.ctx = new AC(); this.ctx.onstatechange = () => { if (this.ctx.state !== 'running' && this.hooked) { try { this.ctx.resume(); } catch (e) { } } }; } } catch (e) { } }
     const c = this.ctx; if (!c) return;
     if (c.state !== 'running') { try { c.resume(); } catch (e) { } }
     try { const s = c.createBufferSource(); s.buffer = c.createBuffer(1, 1, 22050); s.connect(c.destination); s.start(0); } catch (e) { }
-    if (!this.hooked) { this.hooked = true; ['touchend', 'pointerup', 'click', 'keydown'].forEach(ev => addEventListener(ev, () => { if (this.ctx && this.ctx.state !== 'running') { try { this.ctx.resume(); } catch (e) { } } if (this.keep && this.keep.paused) { try { this.keep.play().catch(() => { }); } catch (e) { } } }, true)); }
+    if (!this.hooked) { this.hooked = true; ['touchend', 'pointerup', 'click', 'keydown'].forEach(ev => addEventListener(ev, () => { if (this.ctx && this.ctx.state !== 'running') { try { this.ctx.resume(); } catch (e) { } } if (Opts.loud && this.keep && this.keep.paused) { try { this.keep.play().catch(() => { }); } catch (e) { } } }, true)); }
   },
   tone(f0, f1, dur, type, vol, delay) {
     if (!this.on || !this.ctx) return;

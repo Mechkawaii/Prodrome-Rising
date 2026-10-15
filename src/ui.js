@@ -124,7 +124,7 @@
     $('oSfx').value = Math.round(Opts.sfx * 100); $('vSfx').textContent = Math.round(Opts.sfx * 100) + ' %';
     $('oPad').value = Math.round(Opts.pad * 100); $('vPad').textContent = Math.round(Opts.pad * 100) + ' %';
     $('oPadS').value = Math.round(Opts.padS * 100); $('vPadS').textContent = Math.round(Opts.padS * 100) + ' %'; $('oAim').value = String(Opts.aim); $('oCrt').value = String(Opts.crt);
-    $('oUiz').value = String(Opts.uiz || 0); $('oShake').value = String(Opts.shake); $('oTxt').value = String(Opts.ptxt); $('oVib').value = String(Opts.vib);
+    $('oUiz').value = String(Opts.uiz || 0); $('oLoud').value = String(Opts.loud || 0); $('oShake').value = String(Opts.shake); $('oTxt').value = String(Opts.ptxt); $('oVib').value = String(Opts.vib);
     $('oReset').textContent = 'Effacer la progression'; rstArm = 0;
   }
   function openOpts(from) { optFrom = from; syncOpts(); $('optScr').hidden = false; if (from === 'title') SCR.forEach(s => { if (s !== 'optScr') $(s).hidden = true; }); }
@@ -135,6 +135,7 @@
   $('oSfx').onchange = () => { Sound.init(); Sound.play('pick'); };
   $('oPad').oninput = e => { Opts.pad = e.target.value / 100; $('vPad').textContent = e.target.value + ' %'; applyOpts(); saveOpts(); };
   $('oPadS').oninput = e => { Opts.padS = e.target.value / 100; $('vPadS').textContent = e.target.value + ' %'; applyOpts(); saveOpts(); };
+  $('oLoud').onchange = e => { Opts.loud = +e.target.value; saveOpts(); Sound.init(); };
   $('oUiz').onchange = e => { Opts.uiz = +e.target.value; saveOpts(); applyOpts(); };
   addEventListener('resize', () => applyOpts());
   $('oAim').onchange = e => { Opts.aim = +e.target.value; saveOpts(); };
