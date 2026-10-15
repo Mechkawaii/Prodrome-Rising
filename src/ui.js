@@ -84,7 +84,6 @@
   $('btnContinue').onclick = () => { audio(); const s = lsGet('mkw-ruins-save', null); if (s) start(s); };
   $('btnAch').onclick = () => { renderAch(); show('achScr'); };
   $('btnAchBack').onclick = () => show('title');
-  try { $('title').style.setProperty('--tbg', 'url(' + $('logo').src + ')'); } catch (e) { }
   /* ---------- Options ---------- */
   let optFrom = 'title', rstArm = 0;
   const saveOpts = () => lsSet('mkw-opts', Opts);
