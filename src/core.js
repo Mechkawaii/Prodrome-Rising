@@ -41,7 +41,7 @@ const KEYMAP = {
 };
 
 /* ---------- Audio (synthèse WebAudio) ---------- */
-const Opts = { mus: 1, sfx: 1, shake: 1, ptxt: 1, pad: 1, vib: 1, padS: 1, crt: 1, aim: 1 };
+const Opts = { mus: 1, sfx: 1, shake: 1, ptxt: 1, pad: 1, vib: 1, padS: 1, crt: 1, aim: 1, uiz: 0 };
 try { Object.assign(Opts, JSON.parse(localStorage.getItem('mkw-opts') || '{}')); } catch (e) { }
 const Sound = {
   ctx: null, on: true,
