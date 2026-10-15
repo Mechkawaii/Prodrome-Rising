@@ -126,32 +126,49 @@ const HERO = {}; HEROES.forEach(h => HERO[h.id] = h);
 
 /* ---------- Objets ---------- */
 const ITEMS = [
-  { id: 'turbo', name: 'Extrudeur Turbo', desc: 'Cadence de tir +15 %.', col: '#ff9a2a', g: 0, apply: p => bump(p, 'rate', 1.25) },
-  { id: 'cart', name: 'Cartouches PLAstofer', desc: 'Dégâts +18 %.', col: '#ff4a3a', g: 1, apply: p => bump(p, 'dmg', 1.3) },
-  { id: 'spore', name: 'Spore d\'Izanami', desc: 'Tirs légèrement autoguidés.', col: '#7dffb0', g: 2, apply: p => p.st.homing = Math.max(p.st.homing, .05) },
-  { id: 'coeur', name: 'Cœur d\'Izanami', desc: '+1 PV maximum et soin complet.', col: '#ff5cc8', g: 3, apply: (p, g) => { p.maxhp++; p.hp = p.maxhp; } },
-  { id: 'semelle', name: 'Semelles à ressort', desc: 'Vitesse de course +9 %.', col: '#38a8ff', g: 0, apply: p => bump(p, 'spd', 1.15) },
-  { id: 'propul', name: 'Propulseur dorsal', desc: '+1 saut en l\'air.', col: '#37e0ff', g: 1, apply: p => p.st.jumps++ },
-  { id: 'perf', name: 'Cellules perforantes', desc: 'Les tirs traversent 1 ennemi de plus.', col: '#b36bff', g: 2, apply: p => p.st.pierce++ },
-  { id: 'ric', name: 'Rebond de PLAstofer', desc: 'Les tirs ricochent 2 fois sur les murs.', col: '#ffd23a', g: 3, apply: p => p.st.bounce += 2 },
-  { id: 'expl', name: 'Charge explosive', desc: 'Les tirs explosent à l\'impact.', col: '#ff6a2a', g: 0, apply: p => p.st.explode = Math.max(p.st.explode, 14) },
-  { id: 'drone', name: 'Drone Prodrome piraté', desc: 'Un drone compagnon tire sur les ennemis.', col: '#5dff6a', g: 1, apply: p => p.st.drone++ },
-  { id: 'regen', name: 'Armure régénérante', desc: '+1 armure à chaque salle nettoyée.', col: '#38a8ff', g: 2, apply: p => p.st.regenShield++ },
-  { id: 'cond', name: 'Condensateur', desc: 'Le coup unique se charge 50 % plus vite.', col: '#ffe38a', g: 3, apply: p => p.st.ultRate *= 1.5 },
-  { id: 'cles', name: 'Trousse de clés', desc: '+1 clé de caisse (rare !).', col: '#cfd8dc', g: 0, apply: p => p.keys += 1 },
-  { id: 'lentille', name: 'Lentille de visée', desc: 'Critiques +15 %.', col: '#ff5cc8', g: 1, apply: p => p.st.crit += .15 },
-  { id: 'ion', name: 'Détonateur ionique', desc: 'Les tirs repoussent les ennemis.', col: '#8ee8ff', g: 2, apply: p => p.st.kb += 1.6 },
-  { id: 'blindage', name: 'Plaques de blindage', desc: '+2 armure maximum et +2 armure.', col: '#cfd2e4', g: 1, apply: p => { p.armorMax += 2; p.armor = Math.min(p.armorMax, p.armor + 2); } },
-  { id: 'chassis', name: 'Châssis renforcé', desc: '+2 PV maximum et soin de 2 PV.', col: '#ff5cc8', g: 3, apply: (p, g) => { p.maxhp += 2; g.heal(p, 2); } },
-  { id: 'megacond', name: 'Supercondensateur', desc: 'Coup unique chargé à +60 % et charge +25 % plus rapide.', col: '#ffe38a', g: 0, apply: p => { p.ult = Math.min(100, p.ult + 60); p.st.ultRate *= 1.25; } },
-  { id: 'thermo', name: 'Visée thermique', desc: 'Critiques +10 %, dégâts +6 %.', col: '#ff4a3a', g: 2, apply: p => { p.st.crit += .1; bump(p, 'dmg', 1.1); } },
-  { id: 'bouclier', name: 'Pack d\'armure', desc: '+1 armure maximum et +2 armure.', col: '#38a8ff', g: 1, apply: p => { p.armorMax += 1; p.armor = Math.min(p.armorMax, p.armor + 2); } },
-  { id: 'aimant', name: 'Aimant à boulons', desc: 'Attire boulons, cœurs, armure et énergie de plus loin.', col: '#ffd23a', g: 2, apply: p => p.st.magnet++ },
-  { id: 'vamp', name: 'Siphon de PV', desc: 'Restaure 1 PV toutes les quelques victimes.', col: '#ff5cc8', g: 0, apply: p => p.st.vamp = (p.st.vamp || 0) + 1 },
-  { id: 'contre', name: 'Contre-mesure', desc: 'Une onde de choc repousse tout quand tu es touché.', col: '#8ee8ff', g: 3, apply: p => p.st.thorn = 1 },
-  { id: 'lourdes', name: 'Munitions lourdes', desc: 'Dégâts +30 %, cadence -10 %.', col: '#ff9a2a', g: 2, apply: p => { bump(p, 'dmg', 1.5); bump(p, 'rate', .9); } },
-  { id: 'gel', name: 'Gel d\'urgence', desc: 'Invulnérable plus longtemps après un coup.', col: '#b6ff4a', g: 1, apply: p => p.st.inv = (p.st.inv || 0) + 1 },
-  { id: 'gaz', name: 'Gaz d\'Izanami', desc: 'Un nuage toxique blesse les ennemis proches.', col: '#9dff6a', g: 3, apply: p => p.st.gas++ }
+  { id: 'turbo', name: 'Extrudeur Turbo', desc: 'Cadence de tir +15 %.', col: '#ff9a2a', cat: 'atk', g: 0, apply: p => bump(p, 'rate', 1.25) },
+  { id: 'cart', name: 'Cartouches PLAstofer', desc: 'Dégâts +18 %.', col: '#ff4a3a', cat: 'atk', g: 1, apply: p => bump(p, 'dmg', 1.3) },
+  { id: 'spore', name: 'Spore d\'Izanami', desc: 'Tirs légèrement autoguidés.', col: '#7dffb0', cat: 'atk', g: 2, apply: p => p.st.homing = Math.max(p.st.homing, .05) },
+  { id: 'coeur', name: 'Cœur d\'Izanami', desc: '+1 PV maximum et soin complet.', col: '#ff5cc8', cat: 'def', g: 3, apply: p => { p.maxhp++; p.hp++; } },
+  { id: 'semelle', name: 'Semelles à ressort', desc: 'Vitesse de course +9 %.', col: '#38a8ff', cat: 'mod', g: 0, apply: p => bump(p, 'spd', 1.15) },
+  { id: 'propul', name: 'Propulseur dorsal', desc: '+1 saut en l\'air.', col: '#37e0ff', cat: 'mod', g: 1, apply: p => p.st.jumps++ },
+  { id: 'perf', name: 'Cellules perforantes', desc: 'Les tirs traversent 1 ennemi de plus.', col: '#b36bff', cat: 'atk', g: 2, apply: p => p.st.pierce++ },
+  { id: 'ric', name: 'Rebond de PLAstofer', desc: 'Les tirs ricochent 2 fois sur les murs.', col: '#ffd23a', cat: 'atk', g: 3, apply: p => p.st.bounce += 2 },
+  { id: 'expl', name: 'Charge explosive', desc: 'Les tirs explosent à l\'impact.', col: '#ff6a2a', cat: 'atk', g: 0, apply: p => p.st.explode = Math.max(p.st.explode, 14) },
+  { id: 'drone', name: 'Drone Prodrome piraté', desc: 'Un drone compagnon tire sur les ennemis.', col: '#5dff6a', cat: 'atk', g: 1, apply: p => p.st.drone++ },
+  { id: 'regen', name: 'Armure régénérante', desc: '+1 armure à chaque salle nettoyée.', col: '#38a8ff', cat: 'def', g: 2, apply: p => p.st.regenShield++ },
+  { id: 'cond', name: 'Condensateur', desc: 'Le coup unique se charge 50 % plus vite.', col: '#ffe38a', cat: 'mod', g: 3, apply: p => p.st.ultRate += .5 },
+  { id: 'lentille', name: 'Lentille de visée', desc: 'Critiques +15 %.', col: '#ff5cc8', cat: 'atk', g: 1, apply: p => p.st.crit += .15 },
+  { id: 'ion', name: 'Détonateur ionique', desc: 'Les tirs repoussent les ennemis.', col: '#8ee8ff', cat: 'atk', g: 2, apply: p => p.st.kb += 1.6 },
+  { id: 'blindage', name: 'Plaques de blindage', desc: '+2 armure maximum et +2 armure.', col: '#cfd2e4', cat: 'def', arm: true, g: 1, apply: p => { p.armorMax += 2; p.armor = Math.min(p.armorMax, p.armor + 2); } },
+  { id: 'chassis', name: 'Châssis renforcé', desc: '+2 PV maximum et soin de 2 PV.', col: '#ff5cc8', cat: 'def', g: 3, apply: p => { p.maxhp += 2; p.hp += 2; } },
+  { id: 'megacond', name: 'Supercondensateur', desc: 'Le coup unique se charge 60 % plus vite.', col: '#ffe38a', cat: 'mod', g: 0, apply: p => { p.st.ultRate += .6; } },
+  { id: 'thermo', name: 'Visée thermique', desc: 'Critiques +10 %, dégâts +6 %.', col: '#ff4a3a', cat: 'atk', g: 2, apply: p => { p.st.crit += .1; bump(p, 'dmg', 1.1); } },
+  { id: 'bouclier', name: 'Pack d\'armure', desc: '+1 armure maximum et +2 armure.', col: '#38a8ff', cat: 'def', arm: true, g: 1, apply: p => { p.armorMax += 1; p.armor = Math.min(p.armorMax, p.armor + 2); } },
+  { id: 'aimant', name: 'Aimant à boulons', desc: 'Attire boulons, cœurs, armure et énergie de plus loin.', col: '#ffd23a', cat: 'mod', g: 2, apply: p => p.st.magnet++ },
+  { id: 'vamp', name: 'Siphon de PV', desc: 'Restaure 1 PV toutes les quelques victimes.', col: '#ff5cc8', cat: 'def', g: 0, apply: p => p.st.vamp = (p.st.vamp || 0) + 1 },
+  { id: 'contre', name: 'Contre-mesure', desc: 'Une onde de choc repousse tout quand tu es touché.', col: '#8ee8ff', cat: 'def', g: 3, apply: p => p.st.thorn = 1 },
+  { id: 'lourdes', name: 'Munitions lourdes', desc: 'Dégâts +30 %, cadence -10 %.', col: '#ff9a2a', cat: 'atk', g: 2, apply: p => { bump(p, 'dmg', 1.5); bump(p, 'rate', .9); } },
+  { id: 'gel', name: 'Gel d\'urgence', desc: 'Invulnérable plus longtemps après un coup.', col: '#b6ff4a', cat: 'def', g: 1, apply: p => p.st.inv = (p.st.inv || 0) + 1 },
+  { id: 'gaz', name: 'Gaz d\'Izanami', desc: 'Un nuage toxique blesse les ennemis proches.', col: '#9dff6a', cat: 'atk', g: 3, apply: p => p.st.gas++ },
+  /* --- anomalies : puissantes mais risquées --- */
+  { id: 'noyau', name: 'Noyau instable', desc: 'Dégâts +25 %, mais -1 PV maximum.', col: '#b36bff', cat: 'ano', apply: p => { bump(p, 'dmg', 1.42); p.maxhp = Math.max(1, p.maxhp - 1); p.hp = Math.min(p.hp, p.maxhp); } },
+  { id: 'boucle', name: 'Boucle de surtension', desc: 'Cadence +20 %, mais -1 armure maximum.', col: '#b36bff', cat: 'ano', arm: true, apply: p => { bump(p, 'rate', 1.33); p.armorMax = Math.max(0, p.armorMax - 1); p.armor = Math.min(p.armor, p.armorMax); } },
+  { id: 'fievre', name: 'Fièvre prodrome', desc: '+2 perforations et dégâts +10 %, mais vitesse -20 %.', col: '#b36bff', cat: 'ano', apply: p => { p.st.pierce += 2; bump(p, 'dmg', 1.17); bump(p, 'spd', .8); } },
+  { id: 'verre', name: 'Cadre de verre', desc: 'Critiques +25 %, mais invulnérabilité écourtée.', col: '#b36bff', cat: 'ano', apply: p => { p.st.crit += .25; p.st.inv = (p.st.inv || 0) - 1; } },
+  { id: 'avide', name: 'Capteur avide', desc: 'Aimant puissant, mais coup unique 40 % moins rapide à charger.', col: '#b36bff', cat: 'ano', apply: p => { p.st.magnet += 2; p.st.ultRate -= .4; } },
+  /* --- doubles emplacements : bonus + contrepartie --- */
+  { id: 'lourd', name: 'Armure lourde', desc: '+3 armure max et +3 armure, mais vitesse -20 %.', col: '#38a8ff', cat: 'def', cat2: 'ano', arm: true, apply: p => { p.armorMax += 3; p.armor = Math.min(p.armorMax, p.armor + 3); bump(p, 'spd', .8); } },
+  { id: 'bunker', name: 'Bunker mobile', desc: '+3 PV maximum, mais cadence -25 %.', col: '#38a8ff', cat: 'def', cat2: 'ano', apply: p => { p.maxhp += 3; p.hp += 3; bump(p, 'rate', .75); } },
+  { id: 'canon', name: 'Canon surchargé', desc: 'Dégâts +50 %, mais cadence -30 %.', col: '#ff6a2a', cat: 'atk', cat2: 'ano', apply: p => { bump(p, 'dmg', 1.85); bump(p, 'rate', .7); } },
+  { id: 'rafale', name: 'Rafale folle', desc: 'Cadence +45 %, mais dégâts -20 %.', col: '#ff6a2a', cat: 'atk', cat2: 'ano', apply: p => { bump(p, 'rate', 1.75); bump(p, 'dmg', .8); } },
+  { id: 'reacteur', name: 'Réacteur gourmand', desc: '+1 saut et coup unique +50 % plus rapide, mais -1 PV maximum.', col: '#7dff6a', cat: 'mod', cat2: 'ano', apply: p => { p.st.jumps++; p.st.ultRate += .5; p.maxhp = Math.max(1, p.maxhp - 1); p.hp = Math.min(p.hp, p.maxhp); } },
+  { id: 'tactique', name: 'Calculateur tactique', desc: 'Dégâts +20 %, coup unique +40 % plus rapide, aimant +1.', col: '#ff6a2a', cat: 'atk', cat2: 'mod', apply: p => { bump(p, 'dmg', 1.33); p.st.ultRate += .4; p.st.magnet++; } },
+  /* --- modules incolores : vont dans n'importe quel emplacement --- */
+  { id: 'batt', name: 'Batterie auxiliaire', desc: '+1 PV maximum.', col: '#e8eef0', any: true, apply: p => { p.maxhp++; p.hp++; } },
+  { id: 'proc', name: 'Processeur tactique', desc: 'Dégâts +8 %, cadence +8 %.', col: '#e8eef0', any: true, apply: p => { bump(p, 'dmg', 1.13); bump(p, 'rate', 1.13); } },
+  { id: 'plaque', name: 'Plaque universelle', desc: '+1 armure maximum.', col: '#e8eef0', any: true, arm: true, apply: p => { p.armorMax++; p.armor = Math.min(p.armorMax, p.armor + 1); } },
+  { id: 'puce', name: 'Puce de chance', desc: 'Critiques +12 %.', col: '#e8eef0', any: true, apply: p => { p.st.crit += .12; } }
 ];
 
 /* ---------- Armes (remplacent l'arme de classe) ---------- */
@@ -171,7 +188,7 @@ const WEAPONS = [
   { id: 'w_pump', name: 'Fusil à pompe', desc: 'Arme : gerbe de 5 plombs à courte portée. Remplace ton arme.', col: '#ff6a2a', g: 2, weapon: true, cd: 36,
     fire(g, p, a) { for (let i = -2; i <= 2; i++) g.shootP(p, a.ang + i * .12 + rr(-.03, .03), { speed: 3.2 + rr(-.3, .3), dmg: .7, color: '#ffb347', life: 24, r: 2 }); g.sfx('shootH'); } }
 ];
-WEAPONS.forEach(w => { w.apply = (p, g) => { p.weapon = w; p.items = p.items.filter(o => !o.weapon || o === w); }; });
+WEAPONS.forEach(w => { w.apply = (p, g) => { p.weapon = w; }; });
 
 /* ---------- Ennemis (Prodromes) ---------- */
 const ENEMY = {
@@ -263,9 +280,12 @@ const SYNERGIES = [
   { id: 's_choc', name: 'Onde de choc', req: ['expl', 'ion'], desc: 'Explosions plus larges, recul accru.', apply: p => { p.st.explode += 6; p.st.kb += 1; } },
   { id: 's_essaim', name: 'Essaim', req: ['drone', 'spore'], desc: '+1 drone.', apply: p => p.st.drone++ },
   { id: 's_forteresse', name: 'Forteresse', req: ['regen', 'bouclier'], desc: '+1 bouclier à chaque salle de plus.', apply: p => p.st.regenShield++ },
-  { id: 's_sang', name: 'Sang-froid', req: ['vamp', 'chassis'], desc: '+1 PV maximum et soin de 1 PV.', apply: (p, g) => { p.maxhp++; g.heal(p, 1); } },
+  { id: 's_sang', name: 'Sang-froid', req: ['vamp', 'chassis'], desc: '+1 PV maximum et soin de 1 PV.', apply: p => { p.maxhp++; p.hp++; } },
   { id: 's_toxique', name: 'Zone toxique', req: ['gaz', 'contre'], desc: 'Le nuage toxique s\'étend.', apply: p => p.st.gas++ },
-  { id: 's_surtension', name: 'Surtension', req: ['cond', 'megacond'], desc: 'Coup unique +30 %.', apply: p => p.ult = Math.min(100, p.ult + 30) },
+  { id: 's_surtension', name: 'Surtension', req: ['cond', 'megacond'], desc: 'Coup unique +30 % plus rapide.', apply: p => { p.st.ultRate += .3; } },
   { id: 's_lynx', name: 'Œil de lynx', req: ['lentille', 'thermo'], desc: 'Critiques +15 %.', apply: p => p.st.crit += .15 },
   { id: 's_apesanteur', name: 'Apesanteur', req: ['semelle', 'propul'], desc: '+1 saut en l\'air.', apply: p => p.st.jumps++ }
 ];
+
+const SLOTS = [['def', 'BLINDAGE', '#38a8ff'], ['atk', 'ATTAQUE', '#ff6a2a'], ['mod', 'MODULES', '#7dff6a'], ['ano', 'ANOMALIES', '#b36bff']];
+const SLOTCOL = { def: '#38a8ff', atk: '#ff6a2a', mod: '#7dff6a', ano: '#b36bff' };

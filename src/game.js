@@ -9,7 +9,7 @@ class Player extends Ent {
     Object.assign(this, {
       x: 40, y: 140, w: 12, h: 20, vx: 0, vy: 0, face: 1, onGround: false, coyote: 0, jbuf: 0, jumpsLeft: 1,
       hp: def.hp + 2, maxhp: def.hp + 2, keys: 0, armor: 1, armorMax: 3, inv: 0, cd: 0, ult: 0,
-      buff: { traj: 0, storm: 0, ghost: 0 }, anim: 0, hover: 0, phase: false, dodge: 0, alt: false, items: [], flash: 0,
+      buff: { traj: 0, storm: 0, ghost: 0 }, anim: 0, hover: 0, phase: false, dodge: 0, alt: false, items: [], slots: { def: null, atk: null, mod: null, ano: null }, flash: 0,
       st: { dmg: 1.15, rate: 1, spd: 1, pierce: 0, bounce: 0, homing: 0, explode: 0, crit: .1, jumps: 1, kb: 0, ultRate: 1, regenShield: 0, drone: 0, gas: 0, magnet: 0 },
       isPlayer: true, droneT: 0, gasT: 0, coins: 0, level: 1, xp: 0, xpNext: 9, ups: [], weapon: null, dashMax: 1, dash: 1, dashCd: 0, dashT: 0, dashDir: 1
     });
@@ -29,7 +29,7 @@ class Game {
   constructor(heroId, opts) {
     opts = opts || {};
     this.diffId = opts.diff || 'normal'; this.diff = DIFFS[this.diffId]; this.daily = opts.daily || 0;
-    this.stats = { hurtFloor: false, flawless: false, bossKills: 0, purchases: 0, dashes: 0, syn: 0, secret: 0 }; this.syn = new Set();
+    this.stats = { hurtFloor: false, flawless: false, bossKills: 0, purchases: 0, dashes: 0, syn: 0, secret: 0, mods: 0 }; this.syn = new Set(); this.synD = {};
     this.def = HERO[heroId];
     this.p = new Player(this.def); this.p.hp = this.p.maxhp = Math.max(1, this.p.maxhp + this.diff.bonus);
     this.floor = 0; this.frame = 0; this.kills = 0; this.state = 'play'; this.endT = 0; this.hitstop = 0;
@@ -222,7 +222,7 @@ class Game {
     if (r.type === 'boss' && !r.cleared && r.bossTimer == null) r.bossTimer = 60;
   }
   setupItemRoom(r, boss) {
-    const owned = new Set(this.p.items.map(i => i.id).concat(this.def.armorCap ? ['blindage', 'bouclier'] : []));
+    const owned = this.ownedIds();
     const pool = shuffle(ITEMS.filter(i => !owned.has(i.id)).concat(WEAPONS.filter(w => this.p.weapon !== w && rnd() < .5)));
     const xs = [96, 152, 208];
     const used = [], sp = (r.spawnPts || []).filter(q => q[0] > 28 && q[0] < W - 40 && Math.abs(q[1] - 146) < 30);
@@ -238,7 +238,7 @@ class Game {
     if (this.p.hp < this.p.maxhp) this.pickups.push({ type: 'heart', x: 154, y: 160 - 8, bob: 0 });
   }
   setupShop(r) {
-    const owned = new Set(this.p.items.map(i => i.id).concat(this.def.armorCap ? ['blindage', 'bouclier'] : [])), pool = shuffle(ITEMS.filter(i => !owned.has(i.id)));
+    const owned = this.ownedIds(), pool = shuffle(ITEMS.filter(i => !owned.has(i.id)));
     const wp = shuffle(WEAPONS.filter(w => this.p.weapon !== w))[0];
     const st = [];
     for (let k = 0; k < 2 && k < pool.length; k++) st.push({ kind: 'item', item: pool[k], price: ri(9, 15) });
@@ -444,7 +444,7 @@ class Game {
       else if (k < .72) this.pickups.push({ type: 'shield', x: dx - 4, y: dy, vy: -1, bob: 0 });
       if (rnd() < .10) this.pickups.push({ type: 'key', x: dx + 6, y: dy, vy: -1, bob: 0 });
       if (rnd() < .12) { const q = this.standSpot(ri(60, 250)); if (q) this.pickups.push({ type: 'crate', x: q[0], y: q[1], bob: rnd() * 6 }); }
-      if (rnd() < .16) { const owned = new Set(p.items.map(o => o.id).concat(this.def.armorCap ? ['blindage', 'bouclier'] : [])), pl = ITEMS.filter(o => !owned.has(o.id)); const q = this.standSpot(W / 2 - 40); if (pl.length && q) this.pickups.push({ type: 'item', item: pick(pl), x: q[0], y: q[1], group: 'f' + r.i, bob: 0 }); }
+      if (rnd() < .16) { const owned = this.ownedIds(), pl = ITEMS.filter(o => !owned.has(o.id)); const q = this.standSpot(W / 2 - 40); if (pl.length && q) this.pickups.push({ type: 'item', item: pick(pl), x: q[0], y: q[1], group: 'f' + r.i, bob: 0 }); }
       if (r.depth % 2 === 1 || rnd() < .25) this.pickups.push({ type: 'cell', x: clamp(dx + 20, 24, W - 32), y: dy, vy: -1, bob: 0 });
     } else if (r.type === 'challenge') {
       this.dropCoins(W / 2, 80, 3); this.setupItemRoom(r, false); this.banner = 'Défi réussi !'; this.bannerT = 120;
@@ -473,24 +473,59 @@ class Game {
   openCrate(k) {
     const p = this.p, x = k.x + 4, y = k.y;
     this.fx(x, y, 24, '#ffd23a', 3); this.sfx('pick'); this.shake(3); this.stats.crates = (this.stats.crates || 0) + 1;
-    const owned = new Set(p.items.map(o => o.id).concat(this.def.armorCap ? ['blindage', 'bouclier'] : [])), pl = ITEMS.filter(o => !owned.has(o.id)), r = rnd();
+    const owned = this.ownedIds(), pl = ITEMS.filter(o => !owned.has(o.id)), r = rnd();
     if (r < .38 && pl.length) { const it = pick(pl); this.pickups.push({ type: 'item', item: it, x: x - 4, y: 160 - 14, group: 'c' + this.frame, bob: 0 }); this.text(x, y - 10, 'OBJET !', '#ffd23a'); }
     else if (r < .5) { const ws = WEAPONS.filter(w => p.weapon !== w); if (ws.length) { this.pickups.push({ type: 'item', item: pick(ws), x: x - 4, y: 160 - 14, group: 'c' + this.frame, bob: 0 }); this.text(x, y - 10, 'ARME !', '#ffd23a'); } else this.dropCoins(x, y, 10); }
     else if (r < .68) { this.dropCoins(x, y, ri(3, 5)); this.text(x, y - 10, 'BOULONS !', '#ffd23a'); }
     else if (r < .82) { for (let i = 0; i < 2; i++) this.pickups.push({ type: 'shield', x: x - 10 + i * 12, y: y - 6, vy: -2.4, bob: 0 }); this.text(x, y - 10, 'ARMURE !', '#37e0ff'); }
     else { this.pickups.push({ type: 'heart', x: x - 10, y: y - 6, vy: -2.4, bob: 0 }); this.pickups.push({ type: 'heart', x: x + 2, y: y - 6, vy: -2.4, bob: 0 }); this.pickups.push({ type: 'cell', x: x + 14, y: y - 6, vy: -2.4, bob: 0 }); this.text(x, y - 10, 'REPARATION !', '#ff5cc8'); }
   }
-  giveItem(it) {
-    const p = this.p; p.items.push(it); it.apply(p, this);
-    this.toast = { title: it.name, desc: it.desc, col: it.col, t: 240 };
-    this.sfx('pick'); this.fx(p.cx, p.cy, 20, it.col, 2.5); this.flashT = 4;
-    this.checkSyn();
+  /* ---------- Inventaire : 4 emplacements (blindage / attaque / modules / anomalies) ---------- */
+  ownedIds() { const o = new Set(this.p.items.map(i => i.id)); if (this.def.armorCap) for (const i of ITEMS) if (i.arm) o.add(i.id); return o; }
+  modKeys(it) { return it.any ? null : it.cat2 ? [it.cat, it.cat2] : [it.cat]; }
+  snap() { const p = this.p; return { st: Object.assign({}, p.st), maxhp: p.maxhp, armorMax: p.armorMax }; }
+  diffOf(a) { const p = this.p, d = { st: {}, maxhp: p.maxhp - a.maxhp, armorMax: p.armorMax - a.armorMax }; for (const k in p.st) if (typeof p.st[k] === 'number' && p.st[k] !== a.st[k]) d.st[k] = p.st[k] - a.st[k]; return d; }
+  revert(d) {
+    const p = this.p; for (const k in d.st) p.st[k] = Math.round((p.st[k] - d.st[k]) * 1e4) / 1e4;
+    p.maxhp = Math.max(1, p.maxhp - d.maxhp); p.armorMax = Math.max(0, p.armorMax - d.armorMax);
+    p.hp = Math.max(1, Math.min(p.maxhp, p.hp - Math.max(0, d.maxhp))); p.armor = Math.max(0, Math.min(p.armorMax, p.armor - Math.max(0, d.armorMax)));
   }
+  equipTo(it, keys) {
+    const p = this.p, a = this.snap(); it.apply(p, this); const e = { it, keys, d: this.diffOf(a) };
+    for (const k of keys) p.slots[k] = e; p.items.push(it); this.stats.mods++;
+    this.toast = { title: it.name, desc: it.desc, col: it.col, t: 240 }; this.sfx('pick'); this.fx(p.cx, p.cy, 20, it.col, 2.5); this.flashT = 4; this.checkSyn();
+  }
+  unequipSlot(key) {
+    const p = this.p, e = p.slots[key]; if (!e) return null;
+    this.revert(e.d); for (const k of e.keys) p.slots[k] = null; p.items = p.items.filter(i => i !== e.it); this.checkSyn(); return e.it;
+  }
+  dropModule(it) {
+    const p = this.p, q = this.standSpot(p.cx);
+    this.pickups.push({ type: 'item', item: it, x: q ? q[0] : p.cx - 4, y: q ? q[1] : 146, group: 'd' + this.frame + it.id, bob: 0 });
+  }
+  // true si équipé tout de suite ; sinon ouvre la fenêtre d'inventaire (remplacement) et appelle commit() après validation
+  acquire(it, commit) {
+    const p = this.p;
+    if (it.weapon) { it.apply(p, this); this.toast = { title: it.name, desc: it.desc, col: it.col, t: 240 }; this.sfx('pick'); this.fx(p.cx, p.cy, 20, it.col, 2.5); commit && commit(); return true; }
+    const keys = this.modKeys(it);
+    if (keys && keys.every(k => !p.slots[k])) { this.equipTo(it, keys); commit && commit(); return true; }
+    if (!this.uiReq || typeof this.uiReq !== 'object') this.uiReq = { k: 'equip', it, commit };
+    return false;
+  }
+  resolveEquip(it, keys, commit) {
+    for (const k of keys) { const old = this.unequipSlot(k); if (old) this.dropModule(old); }
+    this.equipTo(it, keys); commit && commit();
+  }
+  removeModule(key) { const it = this.unequipSlot(key); if (it) { this.dropModule(it); this.sfx('door'); this.text(this.p.cx, this.p.y - 8, 'RETIRE', it.col); } }
   checkSyn() {
-    const have = new Set(this.p.items.map(i => i.id).concat(this.def.armorCap ? ['blindage', 'bouclier'] : []));
-    for (const s of SYNERGIES) if (!this.syn.has(s.id) && s.req.every(r => have.has(r))) {
-      this.syn.add(s.id); s.apply(this.p, this); this.stats.syn++;
-      this.toast = { title: 'Synergie : ' + s.name, desc: s.desc, col: '#ffe38a', t: 280 }; this.sfx('ult'); this.fx(this.p.cx, this.p.cy, 26, '#ffe38a', 3);
+    const have = new Set(this.p.items.map(i => i.id));
+    for (const s of SYNERGIES) {
+      const on = s.req.every(r => have.has(r)), cur = this.synD[s.id];
+      if (on && !cur) {
+        const a = this.snap(); s.apply(this.p, this); this.synD[s.id] = this.diffOf(a);
+        if (!this.syn.has(s.id)) { this.syn.add(s.id); this.stats.syn++; }
+        this.toast = { title: 'Synergie : ' + s.name, desc: s.desc, col: '#ffe38a', t: 280 }; this.sfx('ult'); this.fx(this.p.cx, this.p.cy, 26, '#ffe38a', 3);
+      } else if (!on && cur) { this.revert(cur); delete this.synD[s.id]; }
     }
   }
 
@@ -613,13 +648,16 @@ class Game {
           if (k.kind === 'heart' && p.hp >= p.maxhp) this.text(p.cx, p.y - 8, 'PV PLEINS', '#fff');
           else if (p.coins < k.price) { this.text(p.cx, p.y - 8, 'PAS ASSEZ', '#ff6a8a'); this.sfx('warn'); }
           else {
+            if (k.kind === 'item' || k.kind === 'weapon') {
+              const kk = k; this.acquire(k.item, () => { p.coins -= kk.price; const ix = this.pickups.indexOf(kk); if (ix >= 0) this.pickups.splice(ix, 1); this.stats.purchases++; this.fx(kk.x + 4, kk.y, 14, '#ffe38a', 2); });
+              break;
+            }
             p.coins -= k.price; this.pickups.splice(i, 1);
             this.stats.purchases++;
             if (k.kind === 'repair') { this.heal(p, 2); this.sfx('pick'); this.toast = { title: 'Réparation express', desc: '+2 PV.', col: '#ff5cc8', t: 160 }; }
             else if (k.kind === 'surprod') { p.armor = Math.min(p.armorMax, p.armor + 2); this.sfx('pick'); this.toast = { title: 'Surproduction', desc: '+2 armure.', col: '#37e0ff', t: 160 }; }
             else if (k.kind === 'key') { p.keys++; this.sfx('pick'); this.toast = { title: 'Clé de caisse', desc: 'Ouvre une caisse de loot.', col: '#e8eef0', t: 160 }; }
             else if (k.kind === 'heart') { this.heal(p, 2); this.sfx('pick'); this.toast = { title: 'Pack de réparation', desc: '+2 PV.', col: '#ff5cc8', t: 160 }; }
-            else this.giveItem(k.item);
             this.fx(k.x + 4, k.y, 14, '#ffe38a', 2); break;
           }
         }
@@ -630,7 +668,7 @@ class Game {
       else if (k.type === 'crate') { if (Input.jumpPressed) { if (p.keys > 0) { p.keys--; this.pickups.splice(i, 1); this.openCrate(k); break; } else { this.text(p.cx, p.y - 8, 'CLE REQUISE', '#ff6a8a'); this.sfx('warn'); } } }
       else if (k.type === 'cell') { p.ult = Math.min(100, p.ult + 35); this.pickups.splice(i, 1); this.sfx('pick'); this.text(p.cx, p.y - 6, '+ENERGIE', '#ffe38a'); }
       else if (k.type === 'item') {
-        if (Input.jumpPressed) { this.giveItem(k.item); const g = k.group; this.pickups = this.pickups.filter(o => !(o.group === g)); this.fx(k.x, k.y, 16, '#fff', 2); break; }
+        if (Input.jumpPressed) { const kk = k; this.acquire(k.item, () => { const g = kk.group; this.pickups = this.pickups.filter(o => !(o.group === g)); this.fx(kk.x, kk.y, 16, '#fff', 2); }); break; }
       }
       else if (k.type === 'choice') {
         if (!Input.jumpPressed) continue;

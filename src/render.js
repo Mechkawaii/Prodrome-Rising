@@ -302,6 +302,7 @@ function drawPickup(ctx, k, fr, g) {
   else if (k.type === 'item' || k.type === 'choice' || k.type === 'shop') {
     const col = (k.type === 'item' || (k.type === 'shop' && (k.kind === 'item' || k.kind === 'weapon'))) ? k.item.col : (k.type === 'shop' ? (k.kind === 'surprod' ? '#37e0ff' : k.kind === 'key' ? '#e8eef0' : '#ff5cc8') : (k.opt === 'repair' ? '#ff5cc8' : '#37e0ff')), cx = k.x + 4, cy = k.y - 2 + by;
     ctx.fillStyle = '#0d0818'; ctx.fillRect(cx - 9, k.y + 10, 18, 4); ctx.fillStyle = g.biome.neon; ctx.fillRect(cx - 9, k.y + 10, 18, 1);
+    if ((k.type === 'item' || (k.type === 'shop' && k.kind === 'item')) && k.item && !k.item.weapon) { const it = k.item, ks = it.any ? ['*'] : it.cat2 ? [it.cat, it.cat2] : [it.cat]; ks.forEach((q, j) => { ctx.fillStyle = q === '*' ? '#e8eef0' : SLOTCOL[q]; const w = 18 / ks.length; ctx.fillRect(Math.round(cx - 9 + j * w), k.y + 10, Math.ceil(w), 2); }); }
     drawGlow(ctx, cx, cy, 20, col, k.near ? .8 : .5);
     const rows = [2, 4, 6, 8, 10, 8, 6, 4, 2];
     for (let j = 0; j < rows.length; j++) { ctx.fillStyle = j < 4 ? shade(col, .3) : col; ctx.fillRect(cx - rows[j] / 2, cy - 4 + j, rows[j], 1); }

@@ -19,7 +19,7 @@
     { id: 'flawless', name: 'Intouchable', desc: 'Bats un boss sans perdre de PV dans le secteur.', t: g => g.stats.flawless },
     { id: 'rich', name: 'Chasseur de boulons', desc: 'Possède 40 boulons.', t: g => g.p.coins >= 40 },
     { id: 'buyer', name: 'Bon client', desc: 'Fais 3 achats.', t: g => g.stats.purchases >= 3 },
-    { id: 'collector', name: 'Collectionneur', desc: 'Possède 8 objets.', t: g => g.p.items.length >= 8 },
+    { id: 'collector', name: 'Collectionneur', desc: 'Équipe 8 modules.', t: g => g.stats.mods >= 8 },
     { id: 'armed', name: 'Armé jusqu\'aux dents', desc: 'Équipe une arme.', t: g => !!g.p.weapon },
     { id: 'syn', name: 'Synergie', desc: 'Active une synergie d\'objets.', t: g => g.stats.syn >= 1 },
     { id: 'secret', name: 'Fouineur', desc: 'Entre dans une cache ou un défi.', t: g => g.stats.secret >= 1 },
@@ -120,7 +120,7 @@
   $('btnBack').onclick = () => show('title');
   $('btnAgain').onclick = () => { audio(); start(); };
   $('btnChange').onclick = () => { openSelect(dailyMode); };
-  $('btnPause').onclick = () => { if (choosing || radio || mapOpen || hack) return; audio(); setPause(!paused); };
+  $('btnPause').onclick = () => { if (choosing || radio || mapOpen || hack || inv) return; audio(); setPause(!paused); };
   $('btnResume').onclick = () => setPause(false);
   $('btnQuit').onclick = () => { setPause(false); running = false; show('title'); };
   $('btnMute').onclick = () => { Sound.on = !Sound.on; $('btnMute').textContent = Sound.on ? '♪' : '×'; Sound.init(); Music.sync(); };
@@ -185,9 +185,9 @@
     drawSheepard(rctx, radio.t, talking, Math.min(1, radio.t / 14));
   }
   /* ---------- Grande carte ---------- */
-  let mapOpen = false, mapSel = false, hack = null; const mctx = $('mapCv').getContext('2d');
+  let mapOpen = false, mapSel = false, hack = null, inv = null; const mctx = $('mapCv').getContext('2d');
   function toggleMap(v, sel) {
-    if (!running || !game || choosing || radio || hack) return;
+    if (!running || !game || choosing || radio || hack || inv) return;
     v = v === undefined ? !mapOpen : v; if (v === mapOpen) return; mapOpen = v; mapSel = !!(v && sel); $('mapBox').hidden = !v;
     $('mapHint').textContent = mapSel ? 'TELEPORTATION · touche une salle avec borne active' : 'CARTE · touche pour fermer';
     if (v) { paused = true; Input.reset(); releaseAll(); drawBigMap(mctx, game, mapSel); } else { paused = false; last = 0; Input.reset(); Music.sync(); }
@@ -206,7 +206,7 @@
   /* ---------- Mini-jeu de piratage (Simon) ---------- */
   const HK = [['▲', '#ffd23a', 'ArrowUp'], ['◀', '#3dd6ff', 'ArrowLeft'], ['▶', '#ff5fa8', 'ArrowRight'], ['▼', '#6dff7a', 'ArrowDown']];
   function openHack() {
-    const g = game; if (!g || hack || choosing || radio || mapOpen) return;
+    const g = game; if (!g || hack || choosing || radio || mapOpen || inv) return;
     const n = 3 + Math.ceil(g.floor / 2), seq = []; for (let i = 0; i < n; i++) seq.push((Math.random() * 4) | 0);
     hack = { seq, pos: 0, tries: 3, show: 0, phase: 'show', t: 0 };
     paused = true; Input.reset(); releaseAll();
@@ -238,6 +238,63 @@
     if (!g) return; const r = g.rooms[g.ri];
     if (ok) g.tpActivate(); else if (r && r.tp) { r.tp.lock = 1200; g.text(g.player.cx, g.player.y - 8, 'VERROUILLE', '#ff5a5a'); }
   }
+  /* ---------- Inventaire ---------- */
+  const catName = { def: 'BLINDAGE', atk: 'ATTAQUE', mod: 'MODULES', ano: 'ANOMALIES' };
+  function openInv(req) {
+    if (!running || !game || choosing || radio || hack || mapOpen || inv) return false;
+    inv = { req, sel: null, fromPause: !$('pauseBox').hidden }; paused = true; Input.reset(); releaseAll(); $('invBox').hidden = false; renderInv(); return true;
+  }
+  function closeInv() {
+    if (!inv) return; const req = inv.req, fp = inv.fromPause; inv = null; $('invBox').hidden = true;
+    if (req && game && game.uiReq === req) game.uiReq = null;
+    if (!fp) { paused = false; last = 0; Input.reset(); Music.sync(); } else renderPauseStats();
+  }
+  function chips(it) { const ks = it.any ? ['*'] : it.cat2 ? [it.cat, it.cat2] : [it.cat]; return ks.map(k => '<i class="chip" style="--c:' + (k === '*' ? '#e8eef0' : SLOTCOL[k]) + '">' + (k === '*' ? 'INCOLORE' : catName[k]) + '</i>').join(''); }
+  function drawPortrait() {
+    const cv = $('invPort'), x = cv.getContext('2d'), d = game.def, spr = Atlas.hero[d.id][0]; x.imageSmoothingEnabled = false; x.clearRect(0, 0, 112, 112);
+    const gr = x.createRadialGradient(56, 62, 6, 56, 62, 70); gr.addColorStop(0, d.col + '66'); gr.addColorStop(1, '#0b0716'); x.fillStyle = gr; x.fillRect(0, 0, 112, 112);
+    x.fillStyle = 'rgba(255,255,255,.05)'; for (let i = 0; i < 112; i += 4) x.fillRect(0, i, 112, 1);
+    x.fillStyle = 'rgba(0,0,0,.45)'; x.beginPath(); x.ellipse(56, 100, 30, 6, 0, 0, 7); x.fill();
+    blit(x, spr, 8, 6, false, false, 1, 96, 96);
+    x.strokeStyle = d.col; x.lineWidth = 2; x.strokeRect(1, 1, 110, 110);
+  }
+  function renderInv() {
+    const g = game, p = g.p, d = g.def, req = inv.req, st = p.st, nm = req ? req.it : null, nkeys = nm ? g.modKeys(nm) : null;
+    drawPortrait();
+    const pc = x => Math.round(x * 100) + ' %';
+    $('invInfo').innerHTML = '<b class="nm" style="color:' + d.col + '">' + d.name.toUpperCase() + '</b><span class="cl">' + d.cls + ' · Niv. ' + p.level + '</span><span class="tx">' + d.classTxt + '</span><span class="tx" style="color:#ffd23a">★ ' + d.ultName + ' — <u>' + d.ultTxt + '</u></span>' +
+      '<span class="st">PV ' + Math.max(0, Math.ceil(p.hp)) + '/' + p.maxhp + ' · Armure ' + p.armor + '/' + p.armorMax + ' · Dégâts ' + pc(st.dmg) + ' · Cadence ' + pc(st.rate) + ' · Vitesse ' + pc(st.spd) + ' · Crit ' + pc(st.crit) + (p.weapon ? ' · Arme : ' + p.weapon.name : '') + '</span>';
+    const box = $('invSlots'); box.innerHTML = '';
+    for (const [k, label, col] of SLOTS) {
+      const e = p.slots[k], el = document.createElement('button'); el.className = 'slot' + (inv.sel === k ? ' sel' : '') + (e && e.keys.length > 1 ? ' dual' : '');
+      el.style.setProperty('--c', col);
+      const willHit = nkeys && nkeys.includes(k), anyMode = nm && nm.any;
+      if (willHit && e) el.classList.add('hit'); if (willHit && !e) el.classList.add('free'); if (anyMode) el.classList.add('pick');
+      el.innerHTML = '<small>' + label + '</small>' + (e ? '<b style="color:' + e.it.col + '">' + e.it.name + '</b><span>' + e.it.desc + '</span>' + (e.keys.length > 1 ? '<em>⛓ occupe ' + e.keys.map(q => catName[q]).join(' + ') + '</em>' : '') : '<span class="empty">— vide —</span>') + (willHit && e ? '<em class="warn">sera remplacé</em>' : '');
+      el.onclick = () => {
+        if (req && anyMode) { const r = req; game.uiReq = null; g.resolveEquip(r.it, [k], r.commit); closeInv(); return; }
+        if (!req) { inv.sel = inv.sel === k ? null : k; renderInv(); }
+      };
+      box.appendChild(el);
+    }
+    let btns = '';
+    if (req) {
+      $('invNew').innerHTML = '<small>NOUVEAU MODULE</small><b style="color:' + nm.col + '">' + nm.name + '</b><span>' + nm.desc + '</span><div>' + chips(nm) + '</div>' + (nm.any ? '<em>Touche l\'emplacement où l\'installer.</em>' : (nkeys.length > 1 ? '<em>Occupe deux emplacements.</em>' : ''));
+      if (!nm.any) btns += '<button class="btn" id="invOk">Remplacer</button>';
+      btns += '<button class="btn alt" id="invNo">Laisser</button>';
+    } else {
+      $('invNew').innerHTML = inv.sel && p.slots[inv.sel] ? '<small>SÉLECTION</small><b style="color:' + p.slots[inv.sel].it.col + '">' + p.slots[inv.sel].it.name + '</b><span>' + p.slots[inv.sel].it.desc + '</span><div>' + chips(p.slots[inv.sel].it) + '</div>' : '<small>INVENTAIRE</small><span>Touche un module pour le sélectionner, puis « Retirer » pour le poser au sol. Les modules à double emplacement occupent deux cases.</span>';
+      if (inv.sel && p.slots[inv.sel]) btns += '<button class="btn alt" id="invDrop">Retirer</button>';
+      btns += '<button class="btn" id="invClose">Fermer</button>';
+    }
+    $('invBtns').innerHTML = btns;
+    if ($('invOk')) $('invOk').onclick = () => { const r = req; game.uiReq = null; g.resolveEquip(r.it, nkeys, r.commit); closeInv(); };
+    if ($('invNo')) $('invNo').onclick = () => closeInv();
+    if ($('invDrop')) $('invDrop').onclick = () => { g.removeModule(inv.sel); inv.sel = null; renderInv(); };
+    if ($('invClose')) $('invClose').onclick = () => closeInv();
+  }
+  $('btnInv').onclick = () => { audio(); if (inv) closeInv(); else openInv(null); };
+  $('btnPInv').onclick = () => openInv(null);
   $('hackX').onclick = () => { if (hack) closeHack(null); };
   function renderPauseStats() {
     const g = game, box = $('pStats'); if (!g || !box) return; const p = g.p, st = p.st, d = g.def;
@@ -263,16 +320,19 @@
   function saveRun() {
     const g = game, p = g.p; if (!g || g.state !== 'play') return;
     lsSet('mkw-ruins-save', { hero: g.def.id, diff: g.diffId, daily: g.daily, floor: g.floor, hp: p.hp, maxhp: p.maxhp, coins: p.coins, keys: p.keys, armor: p.armor, armorMax: p.armorMax, ult: p.ult,
-      level: p.level, xp: p.xp, xpNext: p.xpNext, ups: p.ups, items: p.items.map(i => i.id), weapon: p.weapon ? p.weapon.id : null, kills: g.kills, score: Math.round(g.score), stats: g.stats });
+      level: p.level, xp: p.xp, xpNext: p.xpNext, ups: p.ups, items: p.items.map(i => i.id), slots: { def: p.slots.def && p.slots.def.it.id, atk: p.slots.atk && p.slots.atk.it.id, mod: p.slots.mod && p.slots.mod.it.id, ano: p.slots.ano && p.slots.ano.it.id }, weapon: p.weapon ? p.weapon.id : null, kills: g.kills, score: Math.round(g.score), stats: g.stats });
   }
   function restore(s) {
     const g = game, p = g.p;
     while (g.floor < s.floor) g.newFloor();
-    for (const id of s.items) { const it = ITEMS.find(i => i.id === id) || WEAPONS.find(i => i.id === id); if (it) { p.items.push(it); it.apply(p, g); } }
+    if (s.slots) {
+      const done = new Set();
+      for (const k of ['def', 'atk', 'mod', 'ano']) { const id = s.slots[k]; if (!id || done.has(id)) continue; done.add(id); const it = ITEMS.find(i => i.id === id); if (!it) continue; const keys = it.any ? [k] : g.modKeys(it); if (keys.every(q => !p.slots[q])) g.equipTo(it, keys); }
+    } else for (const id of s.items) { const it = ITEMS.find(i => i.id === id); if (!it) continue; const ks = it.any ? ['def', 'atk', 'mod', 'ano'].filter(q => !p.slots[q]).slice(0, 1) : g.modKeys(it); if (ks.length && ks.every(q => !p.slots[q])) g.equipTo(it, ks); }
     for (const id of (s.ups || [])) { const up = UPGRADES.find(i => i.id === id); if (up) { p.ups.push(id); up.apply(p, g); } }
     if (s.level) { p.level = s.level; p.xp = s.xp || 0; p.xpNext = s.xpNext || 9; }
     g.checkSyn(); g.toast = null;
-    if (s.weapon) p.weapon = WEAPONS.find(w => w.id === s.weapon) || null;
+    if (s.weapon) p.weapon = WEAPONS.find(w => w.id === s.weapon) || null; else { const w = (s.items || []).map(id => WEAPONS.find(q => q.id === id)).filter(Boolean)[0]; if (w) p.weapon = w; }
     p.maxhp = s.maxhp; p.hp = s.hp; p.coins = s.coins; p.keys = s.keys; p.armor = s.armor == null ? 1 : s.armor; p.armorMax = s.armorMax || 3; p.ult = s.ult;
     g.kills = s.kills; g.score = Math.round(s.score); Object.assign(g.stats, s.stats, { hurtFloor: false });
     g.banner = 'Partie reprise'; g.bannerT = 120;
@@ -284,7 +344,7 @@
     if (save) restore(save);
     lastFloor = 0;
     Input.reset(); running = true; paused = false; acc = 0; last = 0;
-    $('pauseBox').hidden = true; $('lvlBox').hidden = true; choosing = null; radio = null; hack = null; $('hackBox').hidden = true; mapOpen = false; mapSel = false; $('mapBox').hidden = true; radioQ.length = 0; $('radio').hidden = true; finalOk = false; winSaid = false; lastBoss = 0; $('hud').hidden = false;
+    $('pauseBox').hidden = true; $('lvlBox').hidden = true; choosing = null; radio = null; hack = null; inv = null; $('invBox').hidden = true; $('hackBox').hidden = true; mapOpen = false; mapSel = false; $('mapBox').hidden = true; radioQ.length = 0; $('radio').hidden = true; finalOk = false; winSaid = false; lastBoss = 0; $('hud').hidden = false;
     SCR.forEach(s => $(s).hidden = true);
     setShown = false;
   }
@@ -319,6 +379,8 @@
   /* ---------- Clavier / souris ---------- */
   addEventListener('keydown', e => {
     if (radio) { if (!['F5', 'F12'].includes(e.code)) { if (['Enter', 'Space', 'KeyZ', 'KeyX', 'KeyJ', 'KeyK', 'Escape', 'ArrowUp', 'KeyW'].includes(e.code)) { e.preventDefault(); radioAdvance(); } return; } }
+    if (inv) { if (['Escape', 'KeyI', 'Tab'].includes(e.code)) { e.preventDefault(); closeInv(); } return; }
+    if (e.code === 'KeyI' && running && !paused && !radio && !choosing) { e.preventDefault(); openInv(null); return; }
     if (hack) { const hm = { ArrowUp: 0, KeyW: 0, Digit1: 0, ArrowLeft: 1, KeyA: 1, Digit2: 1, ArrowRight: 2, KeyD: 2, Digit3: 2, ArrowDown: 3, KeyS: 3, Digit4: 3 }[e.code]; if (hm !== undefined) { e.preventDefault(); hackPress(hm); } else if (e.code === 'Escape') closeHack(null); return; }
     if (mapOpen) { if (['KeyM', 'Escape', 'Enter', 'Space', 'Tab'].includes(e.code)) { e.preventDefault(); toggleMap(false); } return; }
     if (e.code === 'KeyM' && running && !paused) { e.preventDefault(); toggleMap(true); return; }
@@ -411,7 +473,7 @@
         if (game.floor !== lastFloor) { const first = !lastFloor; lastFloor = game.floor; saveRun(); if (first && game.floor === 1 && !game.stats.bossKills) say('intro'); say('f' + game.floor); }
         if (game.stats.bossKills > lastBoss) { lastBoss = game.stats.bossKills; if (game.state === 'play') say('boss', BOSSES[Math.min(5, game.floor - 1)].name); }
         if (game.pendingLevel > 0 && game.state === 'play' && !choosing && !radio) showLevel();
-        if (game.uiReq) { const q = game.uiReq; game.uiReq = null; if (q === 'hack') openHack(); else if (q === 'tp') toggleMap(true, true); }
+        if (game.uiReq) { const q = game.uiReq; if (typeof q === 'object') { if (!choosing && !radio && !hack && !mapOpen && !inv) { game.uiReq = null; openInv(q); } } else { game.uiReq = null; if (q === 'hack') openHack(); else if (q === 'tp') toggleMap(true, true); } }
         if (game.frame % 30 === 0) checkAch();
         tickAch();
         if (game.state === 'dead' && game.endT > 100) endScreen(false);
