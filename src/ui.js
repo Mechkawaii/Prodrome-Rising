@@ -212,13 +212,14 @@
     const row = (k, v) => '<div class="r"><span>' + k + '</span><b>' + v + '</b></div>';
     const pc = x => Math.round(x * 100) + ' %';
     const dmg = Math.round(st.dmg * 100), wn = p.weapon ? p.weapon.name : 'Arme de base';
-    const c1 = '<div class="col"><h3 style="color:' + d.col + '">' + d.name.toUpperCase() + ' · ' + d.cls + '</h3>' +
+    const c0 = '<div class="col wide"><h3 style="color:' + d.col + '">' + d.name.toUpperCase() + ' · ' + d.cls + '</h3><span class="it">' + d.classTxt + '</span><span class="it" style="color:#ffd23a">★ ' + d.ultName + ' : <span style="color:#cdb8ee">' + d.ultTxt + '</span></span><span class="it" style="opacity:.6;font-style:italic">' + (d.motto || '') + '</span></div>';
+    const c1 = '<div class="col stats"><h3>STATISTIQUES</h3>' +
       row('Niveau', p.level + ' (' + p.xp + '/' + p.xpNext + ')') + row('PV', Math.max(0, Math.ceil(p.hp)) + '/' + p.maxhp) + row('Armure', p.armor + '/' + p.armorMax) +
       row('Arme', wn) + row('Dégâts', pc(st.dmg)) + row('Cadence', pc(st.rate)) + row('Vitesse', pc(st.spd)) + row('Critique', pc(st.crit)) + row('Sauts', st.jumps) +
       row('Clés / Pièces', p.keys + ' / ' + p.coins) + row('Secteur', g.floor + '/6') + '</div>';
     const names = [].concat(p.items.map(i => '<span class="it" style="color:' + (i.col || '#fff') + '">• ' + i.name + '</span>'), p.ups.map(id => { const u = UPGRADES.find(q => q.id === id); return u ? '<span class="it" style="color:' + u.col + '">▸ ' + u.name + '</span>' : ''; }));
     const c2 = '<div class="col"><h3>OBJETS &amp; AMÉLIORATIONS</h3>' + (names.length ? names.join('') : '<span class="it">Aucun pour l\'instant</span>') + '</div>';
-    box.innerHTML = c1 + c2;
+    box.innerHTML = c0 + c1 + c2;
   }
   function setPause(v) { paused = v; $('pauseBox').hidden = !v; Input.reset(); Music.sync(); if (v) renderPauseStats(); }
   function audio() { Sound.init(); Music.sync(); }
