@@ -225,7 +225,12 @@ class Game {
     const owned = new Set(this.p.items.map(i => i.id).concat(this.def.armorCap ? ['blindage', 'bouclier'] : []));
     const pool = shuffle(ITEMS.filter(i => !owned.has(i.id)).concat(WEAPONS.filter(w => this.p.weapon !== w && rnd() < .5)));
     const xs = [96, 152, 208];
-    for (let k = 0; k < 3 && k < pool.length; k++) this.pickups.push({ type: 'item', item: pool[k], x: xs[k], y: 160 - 14, group: boss ? 'b' : 'i' + r.i, bob: rnd() * 6 });
+    const used = [], sp = (r.spawnPts || []).filter(q => q[0] > 28 && q[0] < W - 40 && Math.abs(q[1] - 146) < 30);
+    for (let k = 0; k < 3 && k < pool.length; k++) {
+      let x = xs[k], y = 160 - 14;
+      if (sp.length) { const c = sp.filter(q => used.every(u => Math.abs(u - q[0]) >= 34)).sort((m, n) => Math.abs(m[0] - xs[k]) - Math.abs(n[0] - xs[k]))[0] || sp[0]; x = c[0]; y = c[1]; used.push(x); }
+      this.pickups.push({ type: 'item', item: pool[k], x, y, group: boss ? 'b' : 'i' + r.i, bob: rnd() * 6 });
+    }
   }
   setupVault(r) {
     this.dropCoins(W / 2, 100, 4);
