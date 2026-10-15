@@ -225,7 +225,7 @@ class Game {
     const owned = this.ownedIds();
     const pool = shuffle(ITEMS.filter(i => !owned.has(i.id)).concat(WEAPONS.filter(w => this.p.weapon !== w && rnd() < .5)));
     const xs = [96, 152, 208];
-    const used = [], sp = (r.spawnPts || []).filter(q => q[0] > 28 && q[0] < W - 40 && Math.abs(q[1] - 146) < 30);
+    const used = [], sp = (r.spawnPts || []).filter(q => q[0] > 28 && q[0] < (boss ? 232 : W - 40) && Math.abs(q[1] - 146) < 30);
     for (let k = 0; k < 3 && k < pool.length; k++) {
       let x = xs[k], y = 160 - 14;
       if (sp.length) { const c = sp.filter(q => used.every(u => Math.abs(u - q[0]) >= 34)).sort((m, n) => Math.abs(m[0] - xs[k]) - Math.abs(n[0] - xs[k]))[0] || sp[0]; x = c[0]; y = c[1]; used.push(x); }
@@ -390,7 +390,7 @@ class Game {
     if (this.floor >= 6) { this.state = 'win'; this.endT = 0; this.sfx('win'); return; }
     this.dropCoins(e.cx, e.cy, 6);
     this.setupItemRoom(this.room, true);
-    this.pickups.push({ type: 'portal', x: W / 2 - 8, y: 160 - 32, bob: 0 });
+    this.pickups.push({ type: 'portal', x: W - 52, y: 160 - 32, bob: 0 });
     this.pickups.push({ type: 'heart', x: W / 2 - 40, y: 100, vy: -1, bob: 0 });
     this.banner = 'Prodrome vaincu !'; this.bannerT = 150;
   }
