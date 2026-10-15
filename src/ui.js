@@ -1,0 +1,345 @@
+/* ===== UI : écrans, contrôles, boucle principale ===== */
+(function () {
+  const $ = id => document.getElementById(id);
+  const cv = $('cv'), ctx = cv.getContext('2d');
+  ctx.imageSmoothingEnabled = false;
+  let game = null, running = false, paused = false, sel = 'johanna', acc = 0, last = 0, started = false;
+  const lsGet = (k, d) => { try { const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } };
+  const lsSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { } };
+  const lsDel = k => { try { localStorage.removeItem(k); } catch (e) { } };
+  const dd = new Date(), TODAY = dd.getFullYear() * 10000 + (dd.getMonth() + 1) * 100 + dd.getDate();
+  let best = lsGet('mkw-abyss-best', 0), wins = lsGet('mkw-ruins-wins', {}), ach = lsGet('mkw-ruins-ach', {});
+  let diffId = lsGet('mkw-ruins-diff', 'normal'), dailyMode = false, lastFloor = 0;
+  if (!DIFFS[diffId]) diffId = 'normal';
+  const ACH = [
+    { id: 'first', name: 'Première casse', desc: 'Détruis un Prodrome.', t: g => g.kills >= 1 },
+    { id: 'kills50', name: 'Démolisseur', desc: 'Détruis 50 Prodromes en une partie.', t: g => g.kills >= 50 },
+    { id: 'boss1', name: 'Chef abattu', desc: 'Bats un boss.', t: g => g.stats.bossKills >= 1 },
+    { id: 'win', name: 'Libérateur', desc: 'Termine les 3 secteurs.', t: g => g.state === 'win' },
+    { id: 'flawless', name: 'Intouchable', desc: 'Bats un boss sans perdre de PV dans le secteur.', t: g => g.stats.flawless },
+    { id: 'rich', name: 'Chasseur de boulons', desc: 'Possède 40 boulons.', t: g => g.p.coins >= 40 },
+    { id: 'buyer', name: 'Bon client', desc: 'Fais 3 achats.', t: g => g.stats.purchases >= 3 },
+    { id: 'collector', name: 'Collectionneur', desc: 'Possède 8 objets.', t: g => g.p.items.length >= 8 },
+    { id: 'armed', name: 'Armé jusqu\'aux dents', desc: 'Équipe une arme.', t: g => !!g.p.weapon },
+    { id: 'syn', name: 'Synergie', desc: 'Active une synergie d\'objets.', t: g => g.stats.syn >= 1 },
+    { id: 'secret', name: 'Fouineur', desc: 'Entre dans une cache ou un défi.', t: g => g.stats.secret >= 1 },
+    { id: 'dash', name: 'Éclair', desc: 'Esquive 40 fois en une partie.', t: g => g.stats.dashes >= 40 },
+    { id: 'daily', name: 'Run du jour', desc: 'Gagne un run du jour.', t: g => g.state === 'win' && g.daily }
+  ];
+
+  buildAtlas();
+
+  /* ---------- Sélection du héros ---------- */
+  function thumb(id) {
+    const c = document.createElement('canvas'); c.width = 16; c.height = 16;
+    const x = c.getContext('2d'); x.imageSmoothingEnabled = false;
+    x.drawImage(Atlas.hero[id][0].canvas(), 0, 0);
+    return c;
+  }
+  function heartsStr(n) { return '♥'.repeat(n); }
+  const grid = $('heroGrid');
+  HEROES.forEach(h => {
+    const b = document.createElement('button');
+    b.className = 'hero'; b.dataset.id = h.id; b.style.setProperty('--c', h.col);
+    b.appendChild(thumb(h.id));
+    const n = document.createElement('span'); n.textContent = h.name; b.appendChild(n);
+    if (wins[h.id]) b.classList.add('won');
+    b.onclick = () => select(h.id);
+    grid.appendChild(b);
+  });
+  function select(id) {
+    sel = id;
+    const h = HERO[id];
+    grid.querySelectorAll('.hero').forEach(b => b.classList.toggle('on', b.dataset.id === id));
+    const d = $('heroInfo');
+    d.style.setProperty('--c', h.col);
+    d.innerHTML = '<div class="hn">' + h.name + ' <small>' + h.code + ' · ' + h.cls + '</small></div>' +
+      '<div class="hp">' + heartsStr(h.hp) + '</div>' +
+      '<p><b>Action de classe</b> ' + h.classTxt + '</p>' +
+      '<p><b>Coup unique · ' + h.ultName + '</b> ' + h.ultTxt + '</p>' +
+      (h.motto ? '<p class="mt">' + h.motto + (h.provisional ? ' <em>· fiche provisoire</em>' : '') + '</p>' : '');
+  }
+  select('johanna');
+
+  /* ---------- Écrans ---------- */
+  const SCR = ['title', 'select', 'over', 'achScr'];
+  function show(id) { SCR.forEach(s => $(s).hidden = s !== id); if (id === 'title') refreshTitle(); }
+  function refreshTitle() {
+      $('btnContinue').hidden = !lsGet('mkw-ruins-save', null);
+    const n = ACH.filter(a => ach[a.id]).length;
+    $('btnAch').textContent = 'Succès ' + n + '/' + ACH.length;
+    $('dailyLbl').textContent = 'Même carte pour tous · ' + String(TODAY).replace(/(\d{4})(\d{2})(\d{2})/, '$3/$2/$1');
+  }
+  function openSelect(daily) {
+    dailyMode = daily; $('modeLbl').textContent = daily ? 'Run du jour · ' + String(TODAY).replace(/(\d{4})(\d{2})(\d{2})/, '$3/$2/$1') : 'Nouvelle partie';
+    show('select');
+  }
+  document.querySelectorAll('#diffSeg button').forEach(b => {
+    b.onclick = () => { diffId = b.dataset.d; lsSet('mkw-ruins-diff', diffId); markDiff(); };
+  });
+  function markDiff() { document.querySelectorAll('#diffSeg button').forEach(b => b.classList.toggle('on', b.dataset.d === diffId)); }
+  markDiff();
+  $('btnPlay').onclick = () => { audio(); openSelect(false); };
+  $('btnDaily').onclick = () => { audio(); openSelect(true); };
+  $('btnContinue').onclick = () => { audio(); const s = lsGet('mkw-ruins-save', null); if (s) start(s); };
+  $('btnAch').onclick = () => { renderAch(); show('achScr'); };
+  $('btnAchBack').onclick = () => show('title');
+  $('btnGo').onclick = () => { audio(); start(); };
+  $('btnBack').onclick = () => show('title');
+  $('btnAgain').onclick = () => { audio(); start(); };
+  $('btnChange').onclick = () => { openSelect(dailyMode); };
+  $('btnPause').onclick = () => { if (choosing || radio || mapOpen) return; audio(); setPause(!paused); };
+  $('btnResume').onclick = () => setPause(false);
+  $('btnQuit').onclick = () => { setPause(false); running = false; show('title'); };
+  $('btnMute').onclick = () => { Sound.on = !Sound.on; $('btnMute').textContent = Sound.on ? '♪' : '×'; Sound.init(); Music.sync(); };
+  let choosing = null;
+  function showLevel() {
+    const g = game; if (!g || choosing) return;
+    choosing = g.levelChoices(); paused = true; Input.reset(); releaseAll(); Music.stop();
+    $('lvlTitle').textContent = 'NIVEAU ' + g.p.level; $('lvlSub').textContent = 'Choisis une amélioration' + (g.pendingLevel > 1 ? ' (' + g.pendingLevel + ' en attente)' : '');
+    const box = $('lvlOpts'); box.innerHTML = '';
+    choosing.forEach((u, i) => { const b = document.createElement('button'); b.className = 'up'; b.style.setProperty('--c', u.col); b.innerHTML = '<i>' + (i + 1) + '</i><b>' + u.name + '</b>' + u.desc; b.onclick = () => pickUp(i); box.appendChild(b); });
+    $('lvlBox').hidden = false;
+  }
+  function pickUp(i) {
+    if (!choosing || !choosing[i]) return; const u = choosing[i]; choosing = null;
+    game.applyUp(u); $('lvlBox').hidden = true; paused = !!radio; last = 0; Input.reset(); Music.sync();
+    if (game.pendingLevel > 0) setTimeout(showLevel, 200);
+  }
+  /* ---------- Radio du Général Sheepard ---------- */
+  let radio = null; const radioQ = [], rctx = $('rPort').getContext('2d'); rctx.imageSmoothingEnabled = false;
+  const RADIO = {
+    intro: ['Ici le Général Sheepard. Les Prodromes sont plus nombreux que jamais. Ils ont envahi la planète, jusqu\'à nos infrastructures les plus sensibles.', 'Les Mechkawaii sont notre dernière ligne de défense. {h}, tu reprends chaque secteur, un par un... jusqu\'au vaisseau mère.', 'Pas de repli, pilote. Bonne chance.'],
+    f1: ['Secteur 1 : les faubourgs. Premiers contacts hostiles. Sankai, leur armurier, tient le carrefour. Nettoie la zone.'],
+    f2: ['Faubourgs repris. Beau travail. Le métro est occupé : Senpoku bombarde les quais. Garde la tête froide.'],
+    f3: ['Nos relevés montrent des nids sous la ville. Visibilité réduite. Genbu garde l\'entrée, planqué derrière son bouclier.'],
+    f4: ['Les Prodromes ont contaminé la jungle. Gaoro chasse en meute. Reste mobile, {h}.'],
+    f5: ['Zone critique : réacteur et tours de communication. Si elles tombent, tout tombe. Goki va tout faire sauter, alors fais vite.'],
+    f6: ['Le voilà : le vaisseau mère. Goryo y commande l\'invasion. Tout repose sur toi, {h}. Fais-les payer.'],
+    boss: ['{b} neutralisé. Le secteur est repris. Récupère ton souffle et prends le portail.'],
+    win: ['... Le vaisseau mère s\'effondre ! Tu l\'as fait, {h} !', 'L\'invasion est repoussée. La planète te doit tout, et les Mechkawaii n\'oublieront jamais ce jour.']
+  };
+  function say(key, extra) {
+    const h = game ? game.def.name : 'pilote', b = extra || '';
+    radioQ.push((RADIO[key] || []).map(t => t.replace('{h}', h).replace('{b}', b)));
+    if (!radio) nextRadio();
+  }
+  function nextRadio() {
+    const lines = radioQ.shift();
+    if (!lines) { radio = null; $('radio').hidden = true; if (!paused && !choosing) { last = 0; Input.reset(); Music.sync(); } return; }
+    if (!radio) { paused = true; Input.reset(); releaseAll(); Music.stop(); }
+    radio = { lines, i: 0, n: 0, t: 0 }; $('radio').hidden = false; $('rBody').textContent = ''; $('rNext').hidden = true;
+    Sound.play('door');
+  }
+  function radioAdvance() {
+    if (!radio || radio.t < 14) return;
+    const L = radio.lines[radio.i];
+    if (radio.n < L.length) { radio.n = L.length; return; }
+    if (radio.i < radio.lines.length - 1) { radio.i++; radio.n = 0; $('rNext').hidden = true; }
+    else { const wasWin = radio.win; radio = null; $('radio').hidden = true; paused = false; nextRadio(); if (!radio && wasWin) finalOk = true; }
+  }
+  $('radio').addEventListener('pointerdown', e => { e.preventDefault(); radioAdvance(); });
+  let finalOk = false, winSaid = false, lastBoss = 0;
+  function radioTick() {
+    if (!radio) return;
+    radio.t++;
+    const talking = radio.t >= 14 && radio.n < radio.lines[radio.i].length;
+    if (radio.t >= 14 && talking) {
+      const o = Math.floor(radio.n); radio.n += .6;
+      if (Math.floor(radio.n) !== o && Math.floor(radio.n) % 3 === 0) { try { Sound.tone(1250 + Math.random() * 300, 1200, .02, 'square', .012); } catch (e) { } }
+      $('rBody').textContent = radio.lines[radio.i].slice(0, Math.floor(radio.n));
+    } else if (radio.t >= 14) { $('rBody').textContent = radio.lines[radio.i]; }
+    $('rNext').hidden = !(radio.t >= 14 && !talking);
+    drawSheepard(rctx, radio.t, talking, Math.min(1, radio.t / 14));
+  }
+  /* ---------- Grande carte ---------- */
+  let mapOpen = false; const mctx = $('mapCv').getContext('2d');
+  function toggleMap(v) {
+    if (!running || !game || choosing || radio) return;
+    v = v === undefined ? !mapOpen : v; if (v === mapOpen) return; mapOpen = v; $('mapBox').hidden = !v;
+    if (v) { paused = true; Input.reset(); releaseAll(); Music.stop(); drawBigMap(mctx, game); } else { paused = false; last = 0; Input.reset(); Music.sync(); }
+  }
+  $('btnMap').onclick = () => { audio(); toggleMap(); };
+  $('mapBox').addEventListener('pointerdown', e => { e.preventDefault(); toggleMap(false); });
+  function setPause(v) { paused = v; $('pauseBox').hidden = !v; Input.reset(); if (v) Music.stop(); else Music.sync(); }
+  function audio() { Sound.init(); Music.sync(); }
+  function renderAch() {
+    $('achList').innerHTML = ACH.map(a => '<li class="' + (ach[a.id] ? 'ok' : '') + '"><b>' + (ach[a.id] ? '★ ' : '☆ ') + a.name + '</b><span>' + a.desc + '</span></li>').join('');
+  }
+
+  /* ---------- Sauvegarde (point de contrôle à chaque secteur) ---------- */
+  function saveRun() {
+    const g = game, p = g.p; if (!g || g.state !== 'play') return;
+    lsSet('mkw-ruins-save', { hero: g.def.id, diff: g.diffId, daily: g.daily, floor: g.floor, hp: p.hp, maxhp: p.maxhp, coins: p.coins, keys: p.keys, armor: p.armor, armorMax: p.armorMax, ult: p.ult,
+      level: p.level, xp: p.xp, xpNext: p.xpNext, ups: p.ups, items: p.items.map(i => i.id), weapon: p.weapon ? p.weapon.id : null, kills: g.kills, score: g.score, stats: g.stats });
+  }
+  function restore(s) {
+    const g = game, p = g.p;
+    while (g.floor < s.floor) g.newFloor();
+    for (const id of s.items) { const it = ITEMS.find(i => i.id === id) || WEAPONS.find(i => i.id === id); if (it) { p.items.push(it); it.apply(p, g); } }
+    for (const id of (s.ups || [])) { const up = UPGRADES.find(i => i.id === id); if (up) { p.ups.push(id); up.apply(p, g); } }
+    if (s.level) { p.level = s.level; p.xp = s.xp || 0; p.xpNext = s.xpNext || 9; }
+    g.checkSyn(); g.toast = null;
+    if (s.weapon) p.weapon = WEAPONS.find(w => w.id === s.weapon) || null;
+    p.maxhp = s.maxhp; p.hp = s.hp; p.coins = s.coins; p.keys = s.keys; p.armor = s.armor == null ? 1 : s.armor; p.armorMax = s.armorMax || 3; p.ult = s.ult;
+    g.kills = s.kills; g.score = s.score; Object.assign(g.stats, s.stats, { hurtFloor: false });
+    g.banner = 'Partie reprise'; g.bannerT = 120;
+  }
+
+  function start(save) {
+    if (save) { diffId = save.diff; dailyMode = !!save.daily; }
+    game = new Game(save ? save.hero : sel, { diff: diffId, daily: dailyMode ? TODAY : 0 });
+    if (save) restore(save);
+    lastFloor = 0;
+    Input.reset(); running = true; paused = false; acc = 0; last = 0;
+    $('pauseBox').hidden = true; $('lvlBox').hidden = true; choosing = null; radio = null; mapOpen = false; $('mapBox').hidden = true; radioQ.length = 0; $('radio').hidden = true; finalOk = false; winSaid = false; lastBoss = 0; $('hud').hidden = false;
+    SCR.forEach(s => $(s).hidden = true);
+    setShown = false;
+  }
+  let setShown = false;
+  function endScreen(win) {
+    if (setShown) return; setShown = true;
+    const g = game; lsDel('mkw-ruins-save');
+    let rec;
+    if (g.daily) { const k = 'mkw-ruins-daily-' + g.daily; rec = Math.max(lsGet(k, 0), g.score); lsSet(k, rec); }
+    else { if (g.score > best) { best = g.score; lsSet('mkw-abyss-best', best); } rec = best; }
+    if (win) { wins[g.def.id] = (wins[g.def.id] || 0) + 1; lsSet('mkw-ruins-wins', wins); const cardEl = grid.querySelector('[data-id="' + g.def.id + '"]'); if (cardEl) cardEl.classList.add('won'); }
+    checkAch();
+    $('overTitle').textContent = win ? 'Éclat de victoire' : 'Mechkawaii hors service';
+    $('overTitle').className = win ? 'win' : 'lose';
+    $('overTxt').textContent = win ? 'Le vaisseau mère est détruit. L\'invasion est repoussée. — Gén. Sheepard' : '« Repli, pilote. Les Mechkawaii tiennent encore. Retourne au front. » — Gén. Sheepard';
+    $('overStats').innerHTML = '<span>Secteur <b>' + g.floor + '/6</b></span><span>Prodromes <b>' + g.kills + '</b></span><span>Score <b>' + g.score + '</b></span><span>' + (g.daily ? 'Record du jour' : 'Record') + ' <b>' + rec + '</b></span><span>' + DIFFS[g.diffId].name + '</span>';
+    show('over'); Music.stop();
+    Sound.play(win ? 'win' : 'lose');
+  }
+  /* succès */
+  let achQueue = [], achT = 0;
+  function checkAch() {
+    const g = game; if (!g) return;
+    for (const a of ACH) if (!ach[a.id]) { let ok = false; try { ok = a.t(g); } catch (e) { } if (ok) { ach[a.id] = 1; lsSet('mkw-ruins-ach', ach); achQueue.push(a); } }
+  }
+  function tickAch() {
+    const el = $('achToast');
+    if (achT > 0) { if (--achT === 0) el.hidden = true; return; }
+    if (achQueue.length) { const a = achQueue.shift(); el.innerHTML = '<b>★ Succès · ' + a.name + '</b><span>' + a.desc + '</span>'; el.hidden = false; achT = 200; Sound.play('pick'); }
+  }
+
+  /* ---------- Clavier / souris ---------- */
+  addEventListener('keydown', e => {
+    if (radio) { if (!['F5', 'F12'].includes(e.code)) { if (['Enter', 'Space', 'KeyZ', 'KeyX', 'KeyJ', 'KeyK', 'Escape', 'ArrowUp', 'KeyW'].includes(e.code)) { e.preventDefault(); radioAdvance(); } return; } }
+    if (mapOpen) { if (['KeyM', 'Escape', 'Enter', 'Space', 'Tab'].includes(e.code)) { e.preventDefault(); toggleMap(false); } return; }
+    if (e.code === 'KeyM' && running && !paused) { e.preventDefault(); toggleMap(true); return; }
+    if (choosing && ['Digit1', 'Digit2', 'Digit3'].includes(e.code)) { pickUp(+e.code.slice(5) - 1); return; }
+    if (e.code === 'Escape' || e.code === 'KeyP') { if (choosing) return; if (running) setPause(!paused); return; }
+    if (e.code === 'Enter') { if (!$('title').hidden) $('btnPlay').click(); else if (!$('select').hidden) $('btnGo').click(); else if (!$('over').hidden) $('btnAgain').click(); return; }
+    const k = KEYMAP[e.code]; if (!k || !running) return;
+    e.preventDefault(); audio(); Input.set(k, 1);
+  });
+  addEventListener('keyup', e => { const k = KEYMAP[e.code]; if (k) Input.set(k, 0); });
+  addEventListener('blur', () => { Input.reset(); releaseAll(); if (running && !paused && game && game.state === 'play') setPause(true); });
+  function toGame(e) {
+    const r = cv.getBoundingClientRect();
+    Input.mx = (e.clientX - r.left) / r.width * W; Input.my = (e.clientY - r.top) / r.height * H;
+  }
+  cv.addEventListener('pointermove', e => { if (e.pointerType === 'mouse') { Input.mouse = true; toGame(e); } });
+  cv.addEventListener('pointerdown', e => { if (e.pointerType === 'mouse' && running && !paused) { audio(); Input.mouse = true; toGame(e); Input.set('fire', 1); } });
+  addEventListener('pointerup', e => { if (e.pointerType === 'mouse') Input.set('fire', 0); });
+  addEventListener('keydown', () => { if (Input.mouse) { /* clavier prend la main sur la visée */ } });
+  cv.addEventListener('contextmenu', e => e.preventDefault());
+
+  /* ---------- Contrôles tactiles (zones testées à chaque événement : jamais de bouton coincé) ---------- */
+  const btns = [...document.querySelectorAll('[data-k]')].map(b => ({ b, k: b.dataset.k, on: false, touch: false, mouse: false }));
+  function applyBtn(o) {
+    const want = o.touch || o.mouse;
+    if (want) { o.b.classList.add('d'); if (!o.on) { o.on = true; Input.mouse = false; audio(); } if (!Input.held[o.k]) Input.set(o.k, 1); }
+    else if (o.on) { o.on = false; o.b.classList.remove('d'); Input.set(o.k, 0); }
+  }
+  function syncTouches(list) {
+    for (const o of btns) {
+      const r = o.b.getBoundingClientRect(); let hit = false;
+      for (let i = 0; i < list.length; i++) { const t = list[i]; if (t.clientX >= r.left - 8 && t.clientX <= r.right + 8 && t.clientY >= r.top - 8 && t.clientY <= r.bottom + 8) { hit = true; break; } }
+      o.touch = hit; applyBtn(o);
+    }
+  }
+  function releaseAll() { for (const o of btns) { o.touch = false; o.mouse = false; applyBtn(o); } }
+  ['touchstart', 'touchmove', 'touchend', 'touchcancel'].forEach(ev => addEventListener(ev, e => {
+    syncTouches(e.touches);
+    if (e.target && e.target.closest && e.target.closest('[data-k]')) e.preventDefault();
+  }, { passive: false }));
+  btns.forEach(o => {
+    o.b.addEventListener('pointerdown', e => { if (e.pointerType === 'touch') return; e.preventDefault(); o.mouse = true; applyBtn(o); });
+    o.b.addEventListener('contextmenu', e => e.preventDefault());
+  });
+  addEventListener('pointerup', e => { if (e.pointerType !== 'touch') { for (const o of btns) { o.mouse = false; applyBtn(o); } } });
+  addEventListener('pointercancel', e => { if (e.pointerType !== 'touch') releaseAll(); });
+  addEventListener('blur', releaseAll);
+  document.addEventListener('visibilitychange', () => { if (document.hidden) releaseAll(); });
+
+  /* ---------- Overlays HUD ---------- */
+  const elToast = $('toast'), elBanner = $('banner'), elTip = $('tip'), elKb = $('kbhint');
+  let lastToast = null, lastBanner = '';
+  function updateHud() {
+    const g = game;
+    const t = g.toast;
+    if (t !== lastToast) {
+      lastToast = t;
+      if (t) { elToast.innerHTML = '<b style="color:' + t.col + '">' + t.title + '</b><span>' + t.desc + '</span>'; elToast.hidden = false; elToast.classList.remove('in'); void elToast.offsetWidth; elToast.classList.add('in'); }
+      else elToast.hidden = true;
+    }
+    const showB = g.bannerT > 0 && g.banner && g.state === 'play';
+    if (showB) { if (lastBanner !== g.banner) { lastBanner = g.banner; elBanner.textContent = g.banner; } elBanner.hidden = false; elBanner.style.opacity = Math.min(1, g.bannerT / 30); }
+    else { elBanner.hidden = true; lastBanner = ''; }
+    let tip = null;
+    for (const k of g.pickups) if (k.near && (k.type === 'item' || k.type === 'choice' || k.type === 'shop') && (k.item || k.opt || k.kind)) { tip = k; break; }
+    if (tip) {
+      const it = tip.item, price = tip.type === 'shop' ? '<span style="color:#ffe38a">▲ Acheter · ' + tip.price + ' boulons (tu as ' + g.p.coins + ')</span>' : '';
+      const TXT = { repair: ['#ff5cc8', 'Réparation express', '+2 PV.'], surprod: ['#37e0ff', 'Surproduction', '+2 armure.'], heart: ['#ff5cc8', 'Pack de réparation', '+2 PV.'], key: ['#e8eef0', 'Clé de caisse', 'Ouvre une caisse de loot. Rare !'] };
+      const kk = tip.kind || tip.opt, T = TXT[kk];
+      const txt = it ? '<b style="color:' + it.col + '">' + it.name + '</b><span>' + it.desc + '</span>' + price : T ? '<b style="color:' + T[0] + '">' + T[1] + '</b><span>' + T[2] + '</span>' + price : '';
+      if (elTip.dataset.s !== txt) { elTip.innerHTML = txt; elTip.dataset.s = txt; }
+      elTip.hidden = false;
+    } else { elTip.hidden = true; elTip.dataset.s = ''; }
+  }
+
+  /* ---------- Boucle ---------- */
+  const STEP = 1000 / 60;
+  function frame(ts) {
+    requestAnimationFrame(frame);
+    if (!last) last = ts;
+    let dt = Math.min(100, ts - last); last = ts;
+    for (const o of btns) if ((o.touch || o.mouse) && !Input.held[o.k]) Input.set(o.k, 1);
+    radioTick();
+    if (running && game) {
+      if (!paused) {
+        acc += dt;
+        let n = 0;
+        while (acc >= STEP && n < 5) { game.step(); acc -= STEP; n++; }
+        if (acc > STEP * 5) acc = 0;
+        if (game.floor !== lastFloor) { const first = !lastFloor; lastFloor = game.floor; saveRun(); if (first && game.floor === 1 && !game.stats.bossKills) say('intro'); say('f' + game.floor); }
+        if (game.stats.bossKills > lastBoss) { lastBoss = game.stats.bossKills; if (game.state === 'play') say('boss', BOSSES[Math.min(5, game.floor - 1)].name); }
+        if (game.pendingLevel > 0 && game.state === 'play' && !choosing && !radio) showLevel();
+        if (game.frame % 30 === 0) checkAch();
+        tickAch();
+        if (game.state === 'dead' && game.endT > 100) endScreen(false);
+        else if (game.state === 'win' && game.endT > 100 && !winSaid) { winSaid = true; say('win'); if (radio) radio.win = true; }
+        else if (game.state === 'win' && finalOk) endScreen(true);
+      }
+      renderGame(ctx, game);
+      if (mapOpen) drawBigMap(mctx, game);
+      updateHud();
+    } else if (game) { renderGame(ctx, game); }
+  }
+  // fond d'écran titre : étoiles animées légères
+  requestAnimationFrame(frame);
+  $('best').textContent = best ? 'Record ' + best : '';
+  document.addEventListener('visibilitychange', () => { const c = Sound.ctx; if (!c) return; if (document.hidden) { c.suspend(); } else if (!paused) c.resume(); });
+  const fsEl = document.documentElement, canFs = !!(fsEl.requestFullscreen || fsEl.webkitRequestFullscreen);
+  if (canFs) {
+    $('btnFs').hidden = false;
+    $('btnFs').onclick = () => { try { const f = document.fullscreenElement || document.webkitFullscreenElement; const p = f ? (document.exitFullscreen || document.webkitExitFullscreen).call(document) : (fsEl.requestFullscreen || fsEl.webkitRequestFullscreen).call(fsEl); if (p && p.catch) p.catch(() => { }); } catch (e) { } };
+  }
+  const touch = matchMedia('(pointer:coarse)').matches;
+  document.body.classList.toggle('touch', touch);
+  show('title');
+  window.__mkw = { get game() { return game; }, start, select, Input, saveRun, ach, get diffId() { return diffId; } };
+})();

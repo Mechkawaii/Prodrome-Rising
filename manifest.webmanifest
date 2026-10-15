@@ -1,0 +1,16 @@
+{
+  "name": "Prodrome Rising",
+  "short_name": "Prodrome Rising",
+  "description": "Roguelite pixel-art Mechkawaii : repousse l'invasion Prodrome jusqu'au vaisseau mère.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "fullscreen",
+  "display_override": ["fullscreen", "standalone"],
+  "orientation": "landscape",
+  "background_color": "#0b0716",
+  "theme_color": "#0b0716",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
