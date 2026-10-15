@@ -123,7 +123,6 @@
   $('btnAgain').onclick = () => { audio(); start(); };
   $('btnChange').onclick = () => { openSelect(dailyMode); };
   $('btnPause').onclick = () => { if (inv && inv.pause) { closeInv(); return; } if (choosing || radio || mapOpen || hack || inv) return; audio(); setPause(true); };
-      $('btnMute').onclick = () => { Sound.on = !Sound.on; $('btnMute').textContent = Sound.on ? '♪' : '×'; Sound.init(); Music.sync(); };
   let choosing = null;
   function showLevel() {
     const g = game; if (!g || choosing) return;
