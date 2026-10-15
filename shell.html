@@ -101,6 +101,11 @@ h1 em{display:block;font-style:normal;color:var(--cyan);text-shadow:0 0 18px var
 .up{width:150px;min-height:78px;background:#1b1130;border:2px solid var(--c,#fff);color:#fff;padding:8px 8px 6px;text-align:left;font:600 11px var(--ui);box-shadow:0 0 12px -3px var(--c,#fff);touch-action:manipulation}
 .up b{display:block;font:900 12px var(--disp);color:var(--c,#fff);margin-bottom:3px}
 .up i{font-style:normal;color:#8a7aa8;float:right}
+#pStats{display:flex;gap:14px;flex-wrap:wrap;justify-content:center;max-width:min(96%,560px);font:600 11px var(--ui);color:#cdb8ee;max-height:62vh;overflow:auto}
+#pStats .col{display:flex;flex-direction:column;gap:2px;min-width:150px}
+#pStats h3{margin:0 0 2px;font:800 11px var(--disp);letter-spacing:.14em;color:var(--cyan)}
+#pStats .r{display:flex;justify-content:space-between;gap:10px}#pStats .r b{color:#fff}
+#pStats .it{display:block}.prow{display:flex;gap:10px}
 #pauseBox h2{font:900 20px var(--disp);margin:0;color:var(--cyan);letter-spacing:.2em}
 @media (orientation:landscape){
  #app{max-width:none}
@@ -138,7 +143,7 @@ h1 em{display:block;font-style:normal;color:var(--cyan);text-shadow:0 0 18px var
     <div id="radio" hidden><canvas id="rPort" width="48" height="48"></canvas><div id="rTxt"><div id="rHead"><span>GÉN. SHEEPARD</span><span><i>●</i> 140.85</span></div><div id="rBody"></div><div id="rNext">▼ SUITE</div></div></div>
     <div id="hackBox" hidden><h2>PIRATAGE DE LA BORNE</h2><div id="hackMsg"></div><div id="hackPad"></div><div id="hackProg"></div><button id="hackX">ANNULER</button></div>
     <div id="lvlBox" hidden><h2 id="lvlTitle">NIVEAU 2</h2><div id="lvlSub">Choisis une amélioration</div><div id="lvlOpts"></div></div>
-    <div id="pauseBox" hidden><h2>PAUSE</h2><button class="btn" id="btnResume">Reprendre</button><button class="btn alt" id="btnQuit">Quitter</button></div>
+    <div id="pauseBox" hidden><h2>PAUSE</h2><div id="pStats"></div><div class="prow"><button class="btn" id="btnResume">Reprendre</button><button class="btn alt" id="btnQuit">Quitter</button></div></div>
   </div>
   <div id="kbhint">Flèches / WASD · Espace saut (double) · J tir · K coup unique · C esquive · souris pour viser</div>
   <div id="ctl">

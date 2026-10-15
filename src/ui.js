@@ -95,7 +95,7 @@
   let choosing = null;
   function showLevel() {
     const g = game; if (!g || choosing) return;
-    choosing = g.levelChoices(); paused = true; Input.reset(); releaseAll(); Music.stop();
+    choosing = g.levelChoices(); paused = true; Input.reset(); releaseAll();
     $('lvlTitle').textContent = 'NIVEAU ' + g.p.level; $('lvlSub').textContent = 'Choisis une amélioration' + (g.pendingLevel > 1 ? ' (' + g.pendingLevel + ' en attente)' : '');
     const box = $('lvlOpts'); box.innerHTML = '';
     choosing.forEach((u, i) => { const b = document.createElement('button'); b.className = 'up'; b.style.setProperty('--c', u.col); b.innerHTML = '<i>' + (i + 1) + '</i><b>' + u.name + '</b>' + u.desc; b.onclick = () => pickUp(i); box.appendChild(b); });
@@ -127,7 +127,7 @@
   function nextRadio() {
     const lines = radioQ.shift();
     if (!lines) { radio = null; $('radio').hidden = true; if (!paused && !choosing) { last = 0; Input.reset(); Music.sync(); } return; }
-    if (!radio) { paused = true; Input.reset(); releaseAll(); Music.stop(); }
+    if (!radio) { paused = true; Input.reset(); releaseAll(); }
     radio = { lines, i: 0, n: 0, t: 0 }; $('radio').hidden = false; $('rBody').textContent = ''; $('rNext').hidden = true;
     Sound.play('door');
   }
@@ -158,7 +158,7 @@
     if (!running || !game || choosing || radio || hack) return;
     v = v === undefined ? !mapOpen : v; if (v === mapOpen) return; mapOpen = v; mapSel = !!(v && sel); $('mapBox').hidden = !v;
     $('mapHint').textContent = mapSel ? 'TELEPORTATION · touche une salle avec borne active' : 'CARTE · touche pour fermer';
-    if (v) { paused = true; Input.reset(); releaseAll(); Music.stop(); drawBigMap(mctx, game, mapSel); } else { paused = false; last = 0; Input.reset(); Music.sync(); }
+    if (v) { paused = true; Input.reset(); releaseAll(); drawBigMap(mctx, game, mapSel); } else { paused = false; last = 0; Input.reset(); Music.sync(); }
   }
   $('btnMap').onclick = () => { audio(); toggleMap(); };
   $('mapBox').addEventListener('pointerdown', e => {
@@ -177,7 +177,7 @@
     const g = game; if (!g || hack || choosing || radio || mapOpen) return;
     const n = 3 + Math.ceil(g.floor / 2), seq = []; for (let i = 0; i < n; i++) seq.push((Math.random() * 4) | 0);
     hack = { seq, pos: 0, tries: 3, show: 0, phase: 'show', t: 0 };
-    paused = true; Input.reset(); releaseAll(); Music.stop();
+    paused = true; Input.reset(); releaseAll();
     const pad = $('hackPad'); pad.innerHTML = '';
     HK.forEach((k, i) => { const b = document.createElement('button'); b.className = 'hk'; b.style.setProperty('--c', k[1]); b.textContent = k[0]; b.onclick = () => hackPress(i); pad.appendChild(b); });
     $('hackBox').hidden = false; hackReplay();
@@ -207,7 +207,20 @@
     if (ok) g.tpActivate(); else if (r && r.tp) { r.tp.lock = 1200; g.text(g.player.cx, g.player.y - 8, 'VERROUILLE', '#ff5a5a'); }
   }
   $('hackX').onclick = () => { if (hack) closeHack(null); };
-  function setPause(v) { paused = v; $('pauseBox').hidden = !v; Input.reset(); if (v) Music.stop(); else Music.sync(); }
+  function renderPauseStats() {
+    const g = game, box = $('pStats'); if (!g || !box) return; const p = g.p, st = p.st, d = g.def;
+    const row = (k, v) => '<div class="r"><span>' + k + '</span><b>' + v + '</b></div>';
+    const pc = x => Math.round(x * 100) + ' %';
+    const dmg = Math.round(st.dmg * 100), wn = p.weapon ? p.weapon.name : 'Arme de base';
+    const c1 = '<div class="col"><h3 style="color:' + d.col + '">' + d.name.toUpperCase() + ' · ' + d.cls + '</h3>' +
+      row('Niveau', p.level + ' (' + p.xp + '/' + p.xpNext + ')') + row('PV', Math.max(0, Math.ceil(p.hp)) + '/' + p.maxhp) + row('Armure', p.armor + '/' + p.armorMax) +
+      row('Arme', wn) + row('Dégâts', pc(st.dmg)) + row('Cadence', pc(st.rate)) + row('Vitesse', pc(st.spd)) + row('Critique', pc(st.crit)) + row('Sauts', st.jumps) +
+      row('Clés / Pièces', p.keys + ' / ' + p.coins) + row('Secteur', g.floor + '/6') + '</div>';
+    const names = [].concat(p.items.map(i => '<span class="it" style="color:' + (i.col || '#fff') + '">• ' + i.name + '</span>'), p.ups.map(id => { const u = UPGRADES.find(q => q.id === id); return u ? '<span class="it" style="color:' + u.col + '">▸ ' + u.name + '</span>' : ''; }));
+    const c2 = '<div class="col"><h3>OBJETS &amp; AMÉLIORATIONS</h3>' + (names.length ? names.join('') : '<span class="it">Aucun pour l\'instant</span>') + '</div>';
+    box.innerHTML = c1 + c2;
+  }
+  function setPause(v) { paused = v; $('pauseBox').hidden = !v; Input.reset(); Music.sync(); if (v) renderPauseStats(); }
   function audio() { Sound.init(); Music.sync(); }
   function renderAch() {
     $('achList').innerHTML = ACH.map(a => '<li class="' + (ach[a.id] ? 'ok' : '') + '"><b>' + (ach[a.id] ? '★ ' : '☆ ') + a.name + '</b><span>' + a.desc + '</span></li>').join('');

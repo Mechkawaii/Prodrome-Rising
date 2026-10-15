@@ -195,15 +195,15 @@ const Music = {
     const ws = c.createWaveShaper(), cv = new Float32Array(1024); for (let i = 0; i < 1024; i++) { const x = i / 512 - 1; cv[i] = Math.tanh(x * 2.4) / Math.tanh(2.4); }
     ws.curve = cv; ws.oversample = '2x';
     const comp = c.createDynamicsCompressor(); comp.threshold.value = -20; comp.ratio.value = 6; comp.attack.value = .003; comp.release.value = .14;
-    this.gain.connect(ws); ws.connect(comp); comp.connect(c.destination);
+    this.gain.connect(ws); ws.connect(comp); const dk = c.createBiquadFilter(); dk.type = 'lowpass'; dk.frequency.value = 3000; dk.Q.value = .6; comp.connect(dk); dk.connect(c.destination);
     this.bus = c.createGain(); this.bus.connect(this.gain);   // synthés (« sidechain » sur la grosse caisse)
     this.dr = c.createGain(); this.dr.connect(this.gain);     // batterie
     // écho pointé (délai) + réverbération
     this.dly = c.createDelay(1.5); this.dly.delayTime.value = .36; const fb = c.createGain(); fb.gain.value = .36, lp = c.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 2600;
-    this.send = c.createGain(); this.send.connect(this.dly); this.dly.connect(lp); lp.connect(fb); fb.connect(this.dly); const wet = c.createGain(); wet.gain.value = .42; lp.connect(wet); wet.connect(this.gain);
+    this.send = c.createGain(); this.send.connect(this.dly); this.dly.connect(lp); lp.connect(fb); fb.connect(this.dly); const wet = c.createGain(); wet.gain.value = .5; lp.connect(wet); wet.connect(this.gain);
     const rv = c.createConvolver(), L = Math.floor(c.sampleRate * 1.3), ib = c.createBuffer(2, L, c.sampleRate);
     for (let ch = 0; ch < 2; ch++) { const d = ib.getChannelData(ch); for (let i = 0; i < L; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / L, 2.6); }
-    rv.buffer = ib; this.rvIn = c.createGain(); this.rvIn.connect(rv); const rg = c.createGain(); rg.gain.value = .5; rv.connect(rg); rg.connect(this.gain);
+    rv.buffer = ib; this.rvIn = c.createGain(); this.rvIn.connect(rv); const rg = c.createGain(); rg.gain.value = .65; rv.connect(rg); rg.connect(this.gain);
     const n = c.sampleRate, b = c.createBuffer(1, n, c.sampleRate), d = b.getChannelData(0);
     for (let i = 0; i < n; i++) d[i] = Math.random() * 2 - 1; this.nb = b; return true;
   },
@@ -224,7 +224,7 @@ const Music = {
     if (this.cur < 0) this.load(this.want);
   },
   load(i) {
-    this.cur = i; const T = TRACKS[i]; this.tempo = T.tempo; this.step = 0; this.mel = this.genMel(T); try { if (this.dly) this.dly.delayTime.setValueAtTime(60 / T.tempo * .75, Sound.ctx.currentTime); } catch (e) { }
+    this.cur = i; const T = TRACKS[i]; this.tempo = Math.round(T.tempo * .93); this.step = 0; this.mel = this.genMel(T); try { if (this.dly) this.dly.delayTime.setValueAtTime(60 / (T.tempo * .93) * .75, Sound.ctx.currentTime); } catch (e) { }
   },
   genMel(T) {
     const R = lcgSeq(T.seed * 977), out = []; let idx = 3;
@@ -282,7 +282,7 @@ const Music = {
   duck(t, depth) { try { const g = this.bus.gain; g.cancelScheduledValues(t); g.setValueAtTime(depth, t); g.linearRampToValueAtTime(1, t + .15); } catch (e) { } },
   seq(st, t0, T) {
     const bar = (st >> 4) & 15, s = st & 15, sec = bar < 8 ? 0 : 1, ch = T.prog[sec][bar & 7];
-    const root = hz((((ch[0] + this.trans) % 12) + 12) % 12), tones = CH[ch[1]], nt = tones.length, sd = 15 / this.tempo;
+    const root = hz((((ch[0] + this.trans) % 12) + 12) % 12) * .794, tones = CH[ch[1]], nt = tones.length, sd = 15 / this.tempo;
     const t = T.swing && (s & 1) ? t0 + sd * T.swing : t0;
     const fq = (base, semi) => base * Math.pow(2, semi / 12);
     const P = x => Array.isArray(x) ? x[sec] : x;
@@ -300,8 +300,8 @@ const Music = {
       if (b !== '.') {
         const f = root * 2 * (b === '2' ? 2 : b === '3' ? 1.4983 : 1);
         if (T.bassW === 'sawtooth' || T.bassW === 'square') {
-          this.saw(f, t, sd * 1.7, .05 * soft, { w: T.bassW, c0: 1500, c1: 210, q: 7, hold: .15 });
-          this.n(f * .5, t, sd * 1.7, 'sine', .07 * soft);
+          this.saw(f, t, sd * 1.7, .05 * soft, { w: T.bassW, c0: 1100, c1: 170, q: 8, hold: .15 });
+          this.n(f * .5, t, sd * 1.7, 'sine', .11 * soft);
         } else this.n(f, t, sd * 3, T.bassW, .09 * soft);
       }
     } else if (s === 0 || s === 8) { this.saw(root * 2, t, sd * 7, .045 * soft, { c0: 900, c1: 200, q: 4 }); this.n(root, t, sd * 7, 'sine', .07); }
@@ -310,7 +310,7 @@ const Music = {
       const pat = P(T.arp), every = T.arpEvery || 2, idxs = pat.length === 16 ? pat[s] : pat[s & 7];
       if ((pat.length === 16 || s % every === 0 || every === 1) && !(brk && s % 4)) {
         const oct = (s >= 8 ? 12 : 0) + (sec && (bar & 1) ? 12 : 0), base = root * (T.arpOct || 4), nf = fq(base, tones[idxs % nt] + oct);
-        if (T.arpW === 'sawtooth') this.saw(nf, t, sd * 1.5, (T.arpGain || .016) * soft * (brk ? .7 : 1) * 1.1, { det: 6, c0: 3600, c1: 1100, q: 4, hold: .3, send: .5, rv: .1 });
+        if (T.arpW === 'sawtooth') this.saw(nf, t, sd * 1.5, (T.arpGain || .016) * soft * (brk ? .7 : 1) * 1.1, { det: 6, c0: 2300, c1: 700, q: 4, hold: .3, send: .5, rv: .1 });
         else this.n(nf, t, sd * (every === 1 ? 1.1 : 1.8), T.arpW, (T.arpGain || .016) * soft * (brk ? .7 : 1));
       }
     }
@@ -319,7 +319,7 @@ const Music = {
       const d = this.mel[bar][s >> 1];
       if (d >= 0) {
         const nf = fq(root * 8, tones[d % nt] + 12 * Math.floor(d / nt));
-        if (T.lead === 'sawtooth') this.saw(nf, t, sd * 3.2, (T.leadGain || .028) * soft * .9, { det: 10, c0: 4200, c1: 1500, q: 3, hold: .6, send: .55, rv: .25 });
+        if (T.lead === 'sawtooth') this.saw(nf, t, sd * 3.2, (T.leadGain || .028) * soft * .9, { det: 10, c0: 2600, c1: 900, q: 3, hold: .6, send: .55, rv: .25 });
         else this.n(nf, t, sd * (T.lead === 'sine' ? 4.5 : 2.6), T.lead, (T.leadGain || .028) * soft);
       }
     }
@@ -329,7 +329,7 @@ const Music = {
       if (k[s] === 'x') { this.n(calm ? 130 : 170, t, calm ? .12 : .16, 'sine', calm ? .14 : .28, 42, this.dr); if (!calm) this.nz(t, .012, .09, 3500); this.duck(t, calm ? .7 : .32); }
       if (sn && sn[s] === 'x') { this.nz(t, .2, calm ? .035 : .12, 1400, .5); if (!calm) { this.nz(t + .014, .06, .07, 1800, .3); this.nz(t + .028, .05, .05, 2000); } this.n(200, t, .09, 'triangle', calm ? .05 : .09, 120, this.dr); }
       if (fill && s >= 12 && !calm) { this.n(220 - (s - 12) * 35, t, .13, 'sine', .16, 70, this.dr); this.nz(t, .05, .05, 2500); }
-      if (h[s] === 'x') this.nz(t, .025, calm ? .015 : .035, 7500); else if (h[s] === 'o') this.nz(t, .14, .04, 6000);
+      if (h[s] === 'x') this.nz(t, .025, calm ? .01 : .022, 7500); else if (h[s] === 'o') this.nz(t, .14, .026, 6000);
       if (T.clang && s % 8 === 0 && sec) { this.n(420, t, .25, 'square', .012, 380); this.nz(t, .05, .05, 900); }
     } else if (last && s >= 8) { this.nz(t, .09, .03 + (s - 8) * .01, 3000 - (s - 8) * 200, .2); if (s === 15) { this.n(150, t, .24, 'sine', .3, 38, this.dr); this.duck(t, .3); } }
   }
