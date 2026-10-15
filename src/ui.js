@@ -87,11 +87,12 @@
   /* ---------- Options ---------- */
   let optFrom = 'title', rstArm = 0;
   const saveOpts = () => lsSet('mkw-opts', Opts);
-  function applyOpts() { document.documentElement.style.setProperty('--padA', Opts.pad); Music.setVol(); }
+  function applyOpts() { const r = document.documentElement; r.style.setProperty('--padA', Opts.pad); r.style.setProperty('--padS', Opts.padS); r.classList.toggle('nocrt', !Opts.crt); Music.setVol(); }
   function syncOpts() {
     $('oMus').value = Math.round(Opts.mus * 100); $('vMus').textContent = Math.round(Opts.mus * 100) + ' %';
     $('oSfx').value = Math.round(Opts.sfx * 100); $('vSfx').textContent = Math.round(Opts.sfx * 100) + ' %';
     $('oPad').value = Math.round(Opts.pad * 100); $('vPad').textContent = Math.round(Opts.pad * 100) + ' %';
+    $('oPadS').value = Math.round(Opts.padS * 100); $('vPadS').textContent = Math.round(Opts.padS * 100) + ' %'; $('oAim').value = String(Opts.aim); $('oCrt').value = String(Opts.crt);
     $('oShake').value = String(Opts.shake); $('oTxt').value = String(Opts.ptxt); $('oVib').value = String(Opts.vib);
     $('oReset').textContent = 'Effacer la progression'; rstArm = 0;
   }
@@ -103,6 +104,9 @@
   $('oSfx').oninput = e => { Opts.sfx = e.target.value / 100; $('vSfx').textContent = e.target.value + ' %'; saveOpts(); };
   $('oSfx').onchange = () => { Sound.init(); Sound.play('pick'); };
   $('oPad').oninput = e => { Opts.pad = e.target.value / 100; $('vPad').textContent = e.target.value + ' %'; applyOpts(); saveOpts(); };
+  $('oPadS').oninput = e => { Opts.padS = e.target.value / 100; $('vPadS').textContent = e.target.value + ' %'; applyOpts(); saveOpts(); };
+  $('oAim').onchange = e => { Opts.aim = +e.target.value; saveOpts(); };
+  $('oCrt').onchange = e => { Opts.crt = +e.target.value; applyOpts(); saveOpts(); };
   $('oShake').onchange = e => { Opts.shake = +e.target.value; saveOpts(); };
   $('oTxt').onchange = e => { Opts.ptxt = +e.target.value; saveOpts(); };
   $('oVib').onchange = e => { Opts.vib = +e.target.value; saveOpts(); };

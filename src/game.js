@@ -281,7 +281,7 @@ class Game {
   aim(p) {
     let target = null, tx, ty;
     if (Input.mouse) { tx = Input.mx; ty = Input.my + (this.camY || 0); target = { cx: tx, cy: ty }; }
-    else { target = this.nearestEnemy(p.cx, p.cy); if (target) { tx = target.cx; ty = target.cy; } else { tx = p.cx + p.face * 100; ty = p.cy; } }
+    else { target = Opts.aim ? this.nearestEnemy(p.cx, p.cy) : null; if (target) { tx = target.cx; ty = target.cy; } else { tx = p.cx + p.face * 100; ty = p.cy; } }
     return { ang: Math.atan2(ty - p.cy, tx - p.cx), target, tx, ty };
   }
   shootP(p, ang, o) {
