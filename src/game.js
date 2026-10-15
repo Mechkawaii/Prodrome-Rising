@@ -574,9 +574,10 @@ class Game {
       else if (k.type === 'crate') { if (Input.jumpPressed) { if (p.keys > 0) { p.keys--; this.pickups.splice(i, 1); this.openCrate(k); break; } else { this.text(p.cx, p.y - 8, 'CLE REQUISE', '#ff6a8a'); this.sfx('warn'); } } }
       else if (k.type === 'cell') { p.ult = Math.min(100, p.ult + 35); this.pickups.splice(i, 1); this.sfx('pick'); this.text(p.cx, p.y - 6, '+ENERGIE', '#ffe38a'); }
       else if (k.type === 'item') {
-        this.giveItem(k.item); const g = k.group; this.pickups = this.pickups.filter(o => !(o.group === g)); this.fx(k.x, k.y, 16, '#fff', 2); break;
+        if (Input.jumpPressed) { this.giveItem(k.item); const g = k.group; this.pickups = this.pickups.filter(o => !(o.group === g)); this.fx(k.x, k.y, 16, '#fff', 2); break; }
       }
       else if (k.type === 'choice') {
+        if (!Input.jumpPressed) continue;
         if (k.opt === 'repair') { this.heal(p, 2); this.toast = { title: 'Réparation express', desc: '+2 PV.', col: '#ff5cc8', t: 220 }; }
         else { p.armor = Math.min(p.armorMax, p.armor + 2); this.toast = { title: 'Surproduction', desc: '+2 armure.', col: '#37e0ff', t: 220 }; }
         this.sfx('pick'); const gg = k.group; this.pickups.splice(this.pickups.indexOf(k), 1);

@@ -304,6 +304,17 @@ function drawPickup(ctx, k, fr, g) {
     drawGlow(ctx, cx, cy, 20, col, k.near ? .8 : .5);
     const rows = [2, 4, 6, 8, 10, 8, 6, 4, 2];
     for (let j = 0; j < rows.length; j++) { ctx.fillStyle = j < 4 ? shade(col, .3) : col; ctx.fillRect(cx - rows[j] / 2, cy - 4 + j, rows[j], 1); }
+    { // nom de l'objet (toujours visible hors boutique) + invite à valider par un saut
+      const nm = k.type === 'shop' ? (k.kind === 'item' || k.kind === 'weapon' ? k.item.name : k.kind === 'heart' ? 'Pack reparation' : k.kind === 'key' ? 'Cle de caisse' : k.kind === 'surprod' ? 'Surproduction' : 'Reparation express') : k.type === 'choice' ? (k.opt === 'repair' ? 'Reparation' : 'Surproduction') : k.item.name;
+      let ln = [];
+      if (k.type !== 'shop' || k.near) {
+        const ws = strip(nm).split(' '); let cur = '';
+        for (const w of ws) { if ((cur + ' ' + w).trim().length <= 12) cur = (cur + ' ' + w).trim(); else { if (cur) ln.push(cur); cur = w; } }
+        if (cur) ln.push(cur); ln = ln.slice(0, 3).map(t => t.length > 12 ? t.slice(0, 11) + '.' : t);
+        ln.forEach((t, j) => { const yy = k.y - 9 - (ln.length - 1 - j) * 6; drawText(ctx, t, Math.round(k.x + 4) + 1, yy + 1, '#12081f', 1, 'c'); drawText(ctx, t, Math.round(k.x + 4), yy, k.near ? '#ffffff' : shade(col, .25), 1, 'c'); });
+      }
+      if (k.near && k.type !== 'shop') drawText(ctx, 'SAUT : PRENDRE', Math.round(k.x + 4), k.y - 11 - ln.length * 6, '#ffe38a', 1, 'c');
+    }
     ctx.fillStyle = '#fff';
     if (k.type === 'shop') { const can = g.p.coins >= k.price; drawText(ctx, String(k.price), k.x + 4, k.y - 17, can ? '#ffe38a' : '#8a7a9a', 1, 'c'); }
     if (k.type === 'choice' || (k.type === 'shop' && k.kind !== 'item' && k.kind !== 'weapon')) { if (k.opt === 'repair' || k.kind === 'heart' || k.kind === 'repair') { ctx.fillRect(cx - 1, cy - 2, 2, 5); ctx.fillRect(cx - 3, cy, 6, 1); } else if (k.kind === 'key') { ctx.fillRect(cx - 2, cy - 2, 3, 3); ctx.fillRect(cx, cy + 1, 1, 3); ctx.fillRect(cx + 1, cy + 2, 2, 1); } else { ctx.fillRect(cx - 2, cy - 2, 4, 3); ctx.fillRect(cx - 1, cy + 1, 2, 1); } }
