@@ -411,12 +411,12 @@ function drawHUD(ctx, g) {
 
 /* ---------- Grande carte ---------- */
 function drawBigMap(cx, g) {
-  const CW = 480, CH = 270, gw = g.grid.w, gh = g.grid.h;
+  const CW = 640, CH = 360, gw = g.grid.w, gh = g.grid.h;
   cx.imageSmoothingEnabled = false; cx.fillStyle = '#0d0818'; cx.fillRect(0, 0, CW, CH);
   cx.fillStyle = '#2a1f45'; for (let i = 0; i < 90; i++) cx.fillRect((i * 97) % CW, (i * 53) % CH, 1, 1);
   const GX = 14, GY = 12;
-  const bw = Math.floor(Math.min(440 / gw - GX, ((CH - 82) / gh - GY) / .62)), bh = Math.round(bw * .62);
-  const cw = bw + GX, chh = bh + GY, ox = Math.round((CW - (gw * cw - GX)) / 2), oy = 32 + Math.round((CH - 82 - (gh * chh - GY)) / 2);
+  const bw = Math.floor(Math.min((CW - 40) / gw - GX, ((CH - 92) / gh - GY) / .62)), bh = Math.round(bw * .62);
+  const cw = bw + GX, chh = bh + GY, ox = Math.round((CW - (gw * cw - GX)) / 2), oy = 34 + Math.round((CH - 92 - (gh * chh - GY)) / 2);
   const known = i => { const q = g.rooms[i]; if (q.visited) return true; if (q.hidden) return false; for (const k in q.exits) { const o = q.exits[k]; if (o != null && g.rooms[o].visited) return true; } return false; };
   const NAME = { start: 'DEPART', combat: 'COMBAT', item: 'OBJET', heal: 'SOIN', boss: 'BOSS', shop: 'ATELIER', vault: 'CACHE', challenge: 'DEFI' };
   const COL = { boss: '#ff3a6a', item: '#ffd23a', heal: '#ff5cc8', shop: '#ffe38a', vault: '#8ee8ff', challenge: '#ff9a4a', start: '#8a7ab0' };

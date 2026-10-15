@@ -129,7 +129,7 @@ h1 em{display:block;font-style:normal;color:var(--cyan);text-shadow:0 0 18px var
       <div id="achToast" hidden></div>
     </div>
     <div class="bar"><button id="btnMap" aria-label="Carte">▦</button><button id="btnFs" aria-label="Plein écran" hidden>⛶</button><button id="btnMute" aria-label="Son">♪</button><button id="btnPause" aria-label="Pause">II</button></div>
-    <div id="mapBox" hidden><canvas id="mapCv" width="480" height="270"></canvas><div id="mapHint">CARTE · touche pour fermer</div></div>
+    <div id="mapBox" hidden><canvas id="mapCv" width="640" height="360"></canvas><div id="mapHint">CARTE · touche pour fermer</div></div>
     <div id="radio" hidden><canvas id="rPort" width="48" height="48"></canvas><div id="rTxt"><div id="rHead"><span>GÉN. SHEEPARD</span><span><i>●</i> 140.85</span></div><div id="rBody"></div><div id="rNext">▼ SUITE</div></div></div>
     <div id="lvlBox" hidden><h2 id="lvlTitle">NIVEAU 2</h2><div id="lvlSub">Choisis une amélioration</div><div id="lvlOpts"></div></div>
     <div id="pauseBox" hidden><h2>PAUSE</h2><button class="btn" id="btnResume">Reprendre</button><button class="btn alt" id="btnQuit">Quitter</button></div>
@@ -1092,7 +1092,7 @@ class Game {
     this.floor++; this.stats.hurtFloor = false;
     const savedSeed = getSeed(); if (this.daily) seedRng(this.daily * 7919 + this.floor * 104729);
     // ---- carte : cellules sur une grille, arbre couvrant + boucles ----
-    const GW = [6, 7, 7, 7, 8, 8][this.floor - 1], GH = [2, 2, 3, 3, 3, 3][this.floor - 1], target = [9, 11, 13, 13, 15, 15][this.floor - 1], tallWant = [1, 1, 2, 2, 3, 3][this.floor - 1];
+    const GW = [8, 9, 9, 10, 10, 11][this.floor - 1], GH = [2, 2, 3, 3, 3, 3][this.floor - 1], target = [9, 11, 13, 13, 15, 15][this.floor - 1], tallWant = [1, 1, 2, 2, 3, 3][this.floor - 1];
     const key = (x, y) => x + y * 20;
     // nœuds : une salle normale occupe 1 case, une salle verticale en occupe 2 (x,y) et (x,y+1).
     // Toutes les liaisons sont latérales (portes gauche/droite) : on ne change d'étage que dans une salle verticale.
@@ -1103,7 +1103,7 @@ class Game {
       const ci = ri(0, cells.length - 1), c = cells[ci], side = rnd() < .62 ? 1 : -1, row = pick(rowsOf(c)), nx = c.x + side;
       if (nx < 0 || nx >= GW || at.has(key(nx, row))) continue;
       let tall = false, ny = row;
-      if (tallLeft > 0 && rnd() < .45) {
+      if (tallLeft > 0 && cells.length >= 2 && rnd() < .6) {
         const opts = []; if (row + 1 < GH && !at.has(key(nx, row + 1))) opts.push(row); if (row - 1 >= 0 && !at.has(key(nx, row - 1))) opts.push(row - 1);
         if (opts.length) { tall = true; ny = pick(opts); tallLeft--; }
       }
@@ -1133,6 +1133,8 @@ class Game {
     seq.push('item', 'shop', rnd() < .5 ? 'challenge' : 'vault'); if (this.floor >= 2) seq.push('item'); if (this.floor >= 3) seq.push(rnd() < .5 ? 'challenge' : 'vault'); if (this.floor >= 5) seq.push('vault', 'challenge');
     const cand = [...Array(n).keys()].filter(i => i !== 0 && i !== boss && types[i] === 'combat' && !cells[i].tall);
     const order = shuffle(cand.filter(i => deg[i] === 1)).concat(shuffle(cand.filter(i => deg[i] > 1)));
+    const tallN = cells.filter(c => c.tall).length;
+    seq.length = Math.max(0, Math.min(seq.length, cand.length - Math.max(0, 3 - tallN)));
     seq.forEach((t, k) => { if (order[k] !== undefined) types[order[k]] = t; });
     const rooms = cells.map((c, i) => { const r = c.tall ? this.makeTallRoom(i, dist[i]) : this.makeRoom(types[i], i, dist[i]); r.gx = c.x; r.gy = c.y; return r; });
     for (const l of links) {
@@ -2345,12 +2347,12 @@ function drawHUD(ctx, g) {
 
 /* ---------- Grande carte ---------- */
 function drawBigMap(cx, g) {
-  const CW = 480, CH = 270, gw = g.grid.w, gh = g.grid.h;
+  const CW = 640, CH = 360, gw = g.grid.w, gh = g.grid.h;
   cx.imageSmoothingEnabled = false; cx.fillStyle = '#0d0818'; cx.fillRect(0, 0, CW, CH);
   cx.fillStyle = '#2a1f45'; for (let i = 0; i < 90; i++) cx.fillRect((i * 97) % CW, (i * 53) % CH, 1, 1);
   const GX = 14, GY = 12;
-  const bw = Math.floor(Math.min(440 / gw - GX, ((CH - 82) / gh - GY) / .62)), bh = Math.round(bw * .62);
-  const cw = bw + GX, chh = bh + GY, ox = Math.round((CW - (gw * cw - GX)) / 2), oy = 32 + Math.round((CH - 82 - (gh * chh - GY)) / 2);
+  const bw = Math.floor(Math.min((CW - 40) / gw - GX, ((CH - 92) / gh - GY) / .62)), bh = Math.round(bw * .62);
+  const cw = bw + GX, chh = bh + GY, ox = Math.round((CW - (gw * cw - GX)) / 2), oy = 34 + Math.round((CH - 92 - (gh * chh - GY)) / 2);
   const known = i => { const q = g.rooms[i]; if (q.visited) return true; if (q.hidden) return false; for (const k in q.exits) { const o = q.exits[k]; if (o != null && g.rooms[o].visited) return true; } return false; };
   const NAME = { start: 'DEPART', combat: 'COMBAT', item: 'OBJET', heal: 'SOIN', boss: 'BOSS', shop: 'ATELIER', vault: 'CACHE', challenge: 'DEFI' };
   const COL = { boss: '#ff3a6a', item: '#ffd23a', heal: '#ff5cc8', shop: '#ffe38a', vault: '#8ee8ff', challenge: '#ff9a4a', start: '#8a7ab0' };

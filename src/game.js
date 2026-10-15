@@ -46,7 +46,7 @@ class Game {
     this.floor++; this.stats.hurtFloor = false;
     const savedSeed = getSeed(); if (this.daily) seedRng(this.daily * 7919 + this.floor * 104729);
     // ---- carte : cellules sur une grille, arbre couvrant + boucles ----
-    const GW = [6, 7, 7, 7, 8, 8][this.floor - 1], GH = [2, 2, 3, 3, 3, 3][this.floor - 1], target = [9, 11, 13, 13, 15, 15][this.floor - 1], tallWant = [1, 1, 2, 2, 3, 3][this.floor - 1];
+    const GW = [8, 9, 9, 10, 10, 11][this.floor - 1], GH = [2, 2, 3, 3, 3, 3][this.floor - 1], target = [9, 11, 13, 13, 15, 15][this.floor - 1], tallWant = [1, 1, 2, 2, 3, 3][this.floor - 1];
     const key = (x, y) => x + y * 20;
     // nœuds : une salle normale occupe 1 case, une salle verticale en occupe 2 (x,y) et (x,y+1).
     // Toutes les liaisons sont latérales (portes gauche/droite) : on ne change d'étage que dans une salle verticale.
@@ -57,7 +57,7 @@ class Game {
       const ci = ri(0, cells.length - 1), c = cells[ci], side = rnd() < .62 ? 1 : -1, row = pick(rowsOf(c)), nx = c.x + side;
       if (nx < 0 || nx >= GW || at.has(key(nx, row))) continue;
       let tall = false, ny = row;
-      if (tallLeft > 0 && rnd() < .45) {
+      if (tallLeft > 0 && cells.length >= 2 && rnd() < .6) {
         const opts = []; if (row + 1 < GH && !at.has(key(nx, row + 1))) opts.push(row); if (row - 1 >= 0 && !at.has(key(nx, row - 1))) opts.push(row - 1);
         if (opts.length) { tall = true; ny = pick(opts); tallLeft--; }
       }
@@ -87,6 +87,8 @@ class Game {
     seq.push('item', 'shop', rnd() < .5 ? 'challenge' : 'vault'); if (this.floor >= 2) seq.push('item'); if (this.floor >= 3) seq.push(rnd() < .5 ? 'challenge' : 'vault'); if (this.floor >= 5) seq.push('vault', 'challenge');
     const cand = [...Array(n).keys()].filter(i => i !== 0 && i !== boss && types[i] === 'combat' && !cells[i].tall);
     const order = shuffle(cand.filter(i => deg[i] === 1)).concat(shuffle(cand.filter(i => deg[i] > 1)));
+    const tallN = cells.filter(c => c.tall).length;
+    seq.length = Math.max(0, Math.min(seq.length, cand.length - Math.max(0, 3 - tallN)));
     seq.forEach((t, k) => { if (order[k] !== undefined) types[order[k]] = t; });
     const rooms = cells.map((c, i) => { const r = c.tall ? this.makeTallRoom(i, dist[i]) : this.makeRoom(types[i], i, dist[i]); r.gx = c.x; r.gy = c.y; return r; });
     for (const l of links) {
