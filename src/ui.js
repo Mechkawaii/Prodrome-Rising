@@ -62,7 +62,7 @@
   select('johanna');
 
   /* ---------- Écrans ---------- */
-  const SCR = ['title', 'select', 'over', 'achScr'];
+  const SCR = ['title', 'select', 'over', 'achScr', 'optScr'];
   function show(id) { SCR.forEach(s => $(s).hidden = s !== id); if (id === 'title') refreshTitle(); }
   function refreshTitle() {
       $('btnContinue').hidden = !lsGet('mkw-ruins-save', null);
@@ -84,6 +84,34 @@
   $('btnContinue').onclick = () => { audio(); const s = lsGet('mkw-ruins-save', null); if (s) start(s); };
   $('btnAch').onclick = () => { renderAch(); show('achScr'); };
   $('btnAchBack').onclick = () => show('title');
+  /* ---------- Options ---------- */
+  let optFrom = 'title', rstArm = 0;
+  const saveOpts = () => lsSet('mkw-opts', Opts);
+  function applyOpts() { document.documentElement.style.setProperty('--padA', Opts.pad); Music.setVol(); }
+  function syncOpts() {
+    $('oMus').value = Math.round(Opts.mus * 100); $('vMus').textContent = Math.round(Opts.mus * 100) + ' %';
+    $('oSfx').value = Math.round(Opts.sfx * 100); $('vSfx').textContent = Math.round(Opts.sfx * 100) + ' %';
+    $('oPad').value = Math.round(Opts.pad * 100); $('vPad').textContent = Math.round(Opts.pad * 100) + ' %';
+    $('oShake').value = String(Opts.shake); $('oTxt').value = String(Opts.ptxt); $('oVib').value = String(Opts.vib);
+    $('oReset').textContent = 'Effacer la progression'; rstArm = 0;
+  }
+  function openOpts(from) { optFrom = from; syncOpts(); $('optScr').hidden = false; if (from === 'title') SCR.forEach(s => { if (s !== 'optScr') $(s).hidden = true; }); }
+  $('btnOpt').onclick = () => openOpts('title');
+  $('btnPOpt').onclick = () => openOpts('pause');
+  $('btnOptBack').onclick = () => { $('optScr').hidden = true; if (optFrom === 'title') show('title'); };
+  $('oMus').oninput = e => { Opts.mus = e.target.value / 100; $('vMus').textContent = e.target.value + ' %'; Sound.init(); Music.sync(); Music.setVol(); saveOpts(); };
+  $('oSfx').oninput = e => { Opts.sfx = e.target.value / 100; $('vSfx').textContent = e.target.value + ' %'; saveOpts(); };
+  $('oSfx').onchange = () => { Sound.init(); Sound.play('pick'); };
+  $('oPad').oninput = e => { Opts.pad = e.target.value / 100; $('vPad').textContent = e.target.value + ' %'; applyOpts(); saveOpts(); };
+  $('oShake').onchange = e => { Opts.shake = +e.target.value; saveOpts(); };
+  $('oTxt').onchange = e => { Opts.ptxt = +e.target.value; saveOpts(); };
+  $('oVib').onchange = e => { Opts.vib = +e.target.value; saveOpts(); };
+  $('oReset').onclick = () => {
+    if (!rstArm) { rstArm = 1; $('oReset').textContent = 'Sûr ? Touche encore pour effacer'; setTimeout(() => { rstArm = 0; $('oReset').textContent = 'Effacer la progression'; }, 4000); return; }
+    try { Object.keys(localStorage).filter(k => k.indexOf('mkw-') === 0 && k !== 'mkw-opts').forEach(k => localStorage.removeItem(k)); } catch (e) { }
+    location.reload();
+  };
+  applyOpts();
   $('btnGo').onclick = () => { audio(); start(); };
   $('btnBack').onclick = () => show('title');
   $('btnAgain').onclick = () => { audio(); start(); };

@@ -160,7 +160,7 @@ function renderGame(ctx, g, big) {
   if (g.staticDirty || !g.staticCv) { g.staticCv = buildStatic(g); g.staticDirty = false; }
   ctx.imageSmoothingEnabled = false;
   ctx.save();
-  if (g.shakeT > 0) ctx.translate(Math.round(rr(-1, 1) * g.shakeT), Math.round(rr(-1, 1) * g.shakeT));
+  if (g.shakeT > 0) ctx.translate(Math.round(rr(-1, 1) * g.shakeT * Opts.shake), Math.round(rr(-1, 1) * g.shakeT * Opts.shake));
   const camY = Math.round(g.camY || 0); ctx.translate(0, -camY);
   ctx.drawImage(g.staticCv, 0, 0);
   const fr = g.frame, room = g.room;
@@ -268,7 +268,7 @@ function renderGame(ctx, g, big) {
   for (const q of g.parts) { ctx.globalAlpha = clamp(q.life / 14, 0, 1); ctx.fillStyle = q.col; ctx.fillRect(Math.round(q.x), Math.round(q.y), q.sz, q.sz); }
   ctx.globalAlpha = 1;
   // textes flottants
-  for (const t of g.texts) { const w = textW(t.str); drawText(ctx, t.str, t.x - w / 2 + 1, t.y + 1, '#12081f'); drawText(ctx, t.str, t.x - w / 2, t.y, t.col); }
+  if (Opts.ptxt) for (const t of g.texts) { const w = textW(t.str); drawText(ctx, t.str, t.x - w / 2 + 1, t.y + 1, '#12081f'); drawText(ctx, t.str, t.x - w / 2, t.y, t.col); }
   if (g.flashT > 0) { ctx.fillStyle = '#fff'; ctx.globalAlpha = g.flashT / 14; ctx.fillRect(0, camY, W, H); ctx.globalAlpha = 1; }
   ctx.restore();
   drawHUD(ctx, g);

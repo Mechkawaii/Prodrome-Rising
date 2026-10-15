@@ -41,6 +41,8 @@ const KEYMAP = {
 };
 
 /* ---------- Audio (synthèse WebAudio) ---------- */
+const Opts = { mus: 1, sfx: 1, shake: 1, ptxt: 1, pad: 1, vib: 1 };
+try { Object.assign(Opts, JSON.parse(localStorage.getItem('mkw-opts') || '{}')); } catch (e) { }
 const Sound = {
   ctx: null, on: true,
   init() {
@@ -54,7 +56,7 @@ const Sound = {
       const o = c.createOscillator(), g = c.createGain();
       o.type = type || 'square'; o.frequency.setValueAtTime(f0, t);
       o.frequency.exponentialRampToValueAtTime(Math.max(30, f1), t + dur);
-      g.gain.setValueAtTime(vol || 0.05, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      g.gain.setValueAtTime(Math.max(.0002, (vol || 0.05) * Opts.sfx), t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
       o.connect(g); g.connect(c.destination); o.start(t); o.stop(t + dur + 0.02);
     } catch (e) { }
   },
@@ -64,7 +66,7 @@ const Sound = {
       const c = this.ctx, n = Math.floor(c.sampleRate * dur), b = c.createBuffer(1, n, c.sampleRate), d = b.getChannelData(0);
       for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / n);
       const s = c.createBufferSource(), g = c.createGain(), fl = c.createBiquadFilter();
-      fl.type = 'lowpass'; fl.frequency.value = f || 1200; g.gain.value = vol || 0.08;
+      fl.type = 'lowpass'; fl.frequency.value = f || 1200; g.gain.value = (vol || 0.08) * Opts.sfx;
       s.buffer = b; s.connect(fl); fl.connect(g); g.connect(c.destination); s.start();
     } catch (e) { }
   },
@@ -190,7 +192,7 @@ const Music = {
   playing: false, step: 0, next: 0, tempo: 108, cur: -1, want: 0, trans: 0, mel: null, timer: null, nb: null, gain: null,
   ensure() {
     const c = Sound.ctx; if (!c) return false; if (this.gain) return true;
-    this.gain = c.createGain(); this.gain.gain.value = .38;
+    this.gain = c.createGain(); this.gain.gain.value = .38 * Opts.mus;
     // chaîne maître : saturation douce + compresseur (son « brut »)
     const ws = c.createWaveShaper(), cv = new Float32Array(1024); for (let i = 0; i < 1024; i++) { const x = i / 512 - 1; cv[i] = Math.tanh(x * 2.4) / Math.tanh(2.4); }
     ws.curve = cv; ws.oversample = '2x';
@@ -211,6 +213,7 @@ const Music = {
     if (!Sound.on || this.playing || !this.ensure()) return;
     this.playing = true; this.next = Sound.ctx.currentTime + .08; this.timer = setInterval(() => this.sched(), 40);
   },
+  setVol() { try { if (this.gain) this.gain.gain.setTargetAtTime(.38 * Opts.mus, Sound.ctx.currentTime, .03); } catch (e) { } },
   stop() { this.playing = false; if (this.timer) clearInterval(this.timer); this.timer = null; },
   sync() { if (Sound.on) this.start(); else this.stop(); },
   // choisit le morceau selon l'étage et le type de salle ; le changement se fait à la mesure suivante

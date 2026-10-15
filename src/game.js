@@ -348,7 +348,7 @@ class Game {
       const ab = Math.min(p.armor, Math.max(1, Math.ceil(dmg))); p.armor -= ab; dmg -= ab; this.fx(p.cx, p.cy, 12, '#37e0ff', 2); this.sfx('shield'); this.shake(3); this.text(p.cx, p.y - 8, 'ARMURE', '#37e0ff');
       if (dmg <= 0) { p.inv = 70; if (sx !== undefined) { p.vx = Math.sign(p.cx - sx) * 1.2; } return true; }
     }
-    this.stats.hurtFloor = true; this.room.hit = true; p.hp -= dmg; p.inv = 120 + (p.st.inv || 0) * 40; if (p.st.thorn && p.hp > 0) this.nova(p.cx, p.cy, '#8ee8ff', 3 * p.st.dmg, { kb: 3 }); p.flash = 8; this.shake(6); this.sfx('hurt'); this.fx(p.cx, p.cy, 14, '#ff4a6a', 2.5); this.flashT = 4;
+    this.stats.hurtFloor = true; this.room.hit = true; try { if (Opts.vib && navigator.vibrate) navigator.vibrate(35); } catch (e) { } p.hp -= dmg; p.inv = 120 + (p.st.inv || 0) * 40; if (p.st.thorn && p.hp > 0) this.nova(p.cx, p.cy, '#8ee8ff', 3 * p.st.dmg, { kb: 3 }); p.flash = 8; this.shake(6); this.sfx('hurt'); this.fx(p.cx, p.cy, 14, '#ff4a6a', 2.5); this.flashT = 4;
     if (sx !== undefined) { p.vx = Math.sign(p.cx - sx) * 2.2; p.vy = -2.4; }
     if (p.hp <= 0) {
       if (p.revive) { p.revive = 0; p.hp = 2; p.inv = 150; this.nova(p.cx, p.cy, '#ff6a2a', 6 * p.st.dmg, { burn: 240 }); this.text(p.cx, p.y - 10, 'REVEIL ENFLAMME', '#ff6a2a'); this.sfx('ult'); }
