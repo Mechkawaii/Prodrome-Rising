@@ -406,10 +406,10 @@ const Music = {
   stop() { this.playing = false; if (this.timer) clearInterval(this.timer); this.timer = null; },
   sync() { if (Sound.on) this.start(); else this.stop(); },
   // choisit le morceau selon l'étage et le type de salle ; le changement se fait à la mesure suivante
-  mood(floor, type, depth) {
+  mood(floor, type, depth, fight) {
     const f = Math.max(1, Math.min(6, floor || 1));
     let id;
-    if (type === 'boss') id = 'boss';
+    if (type === 'boss' || fight) id = 'boss';
     else if (type === 'shop' || type === 'heal' || type === 'item' || type === 'vault') id = 'boutique';
     else id = FLOOR_TRACKS[f - 1][(depth || 0) & 1];
     this.want = TRACK_BY(id); this.trans = type === 'boss' ? [0, -2, 3, 5, -4, 1][f - 1] : [0, 0, 0, 3, 0, -3][f - 1]; this.fl = f;
@@ -1255,7 +1255,7 @@ class Game {
   loadRoom(i, from, ledge, half) {
     // sauvegarde de la salle quittée
     if (this.room) { this.room.pickups = this.pickups; }
-    this.room = this.rooms[i]; this.ri = i; Music.mood(this.floor, this.room.type, this.room.depth); const r = this.room, p = this.p;
+    this.room = this.rooms[i]; this.ri = i; Music.mood(this.floor, this.room.type, this.room.depth, (this.room.type === 'combat' || this.room.type === 'challenge') && !this.room.cleared); const r = this.room, p = this.p;
     r.visited = true;
     this.bullets = []; this.ebullets = []; this.enemies = []; this.hazards = []; this.emines = []; this.strikes = []; this.novas = []; this.decoy = null;
     this.mines = this.mines.filter(m => false);
@@ -1489,7 +1489,7 @@ class Game {
     return pts[Math.min(pts.length - 1, ri(0, 2))];
   }
   clearRoom() {
-    const r = this.room, p = this.p; r.cleared = true; r.locked = false; this.locked = false; this.roomsCleared++;
+    const r = this.room, p = this.p; r.cleared = true; r.locked = false; this.locked = false; this.roomsCleared++; Music.mood(this.floor, r.type, r.depth, false);
     this.sfx('door'); this.shake(2); this.addXp(2);
     if (r.type === 'combat') {
       if (p.st.regenShield) p.armor = Math.min(p.armorMax, p.armor + p.st.regenShield);

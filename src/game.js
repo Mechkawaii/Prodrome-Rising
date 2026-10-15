@@ -193,7 +193,7 @@ class Game {
   loadRoom(i, from, ledge, half) {
     // sauvegarde de la salle quittée
     if (this.room) { this.room.pickups = this.pickups; }
-    this.room = this.rooms[i]; this.ri = i; Music.mood(this.floor, this.room.type, this.room.depth); const r = this.room, p = this.p;
+    this.room = this.rooms[i]; this.ri = i; Music.mood(this.floor, this.room.type, this.room.depth, (this.room.type === 'combat' || this.room.type === 'challenge') && !this.room.cleared); const r = this.room, p = this.p;
     r.visited = true;
     this.bullets = []; this.ebullets = []; this.enemies = []; this.hazards = []; this.emines = []; this.strikes = []; this.novas = []; this.decoy = null;
     this.mines = this.mines.filter(m => false);
@@ -427,7 +427,7 @@ class Game {
     return pts[Math.min(pts.length - 1, ri(0, 2))];
   }
   clearRoom() {
-    const r = this.room, p = this.p; r.cleared = true; r.locked = false; this.locked = false; this.roomsCleared++;
+    const r = this.room, p = this.p; r.cleared = true; r.locked = false; this.locked = false; this.roomsCleared++; Music.mood(this.floor, r.type, r.depth, false);
     this.sfx('door'); this.shake(2); this.addXp(2);
     if (r.type === 'combat') {
       if (p.st.regenShield) p.armor = Math.min(p.armorMax, p.armor + p.st.regenShield);

@@ -214,10 +214,10 @@ const Music = {
   stop() { this.playing = false; if (this.timer) clearInterval(this.timer); this.timer = null; },
   sync() { if (Sound.on) this.start(); else this.stop(); },
   // choisit le morceau selon l'étage et le type de salle ; le changement se fait à la mesure suivante
-  mood(floor, type, depth) {
+  mood(floor, type, depth, fight) {
     const f = Math.max(1, Math.min(6, floor || 1));
     let id;
-    if (type === 'boss') id = 'boss';
+    if (type === 'boss' || fight) id = 'boss';
     else if (type === 'shop' || type === 'heal' || type === 'item' || type === 'vault') id = 'boutique';
     else id = FLOOR_TRACKS[f - 1][(depth || 0) & 1];
     this.want = TRACK_BY(id); this.trans = type === 'boss' ? [0, -2, 3, 5, -4, 1][f - 1] : [0, 0, 0, 3, 0, -3][f - 1]; this.fl = f;
