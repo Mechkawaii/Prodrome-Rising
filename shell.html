@@ -74,6 +74,14 @@ h1 em{display:block;font-style:normal;color:var(--cyan);text-shadow:0 0 18px var
 #mapBox[hidden]{display:none}
 #mapCv{width:min(96%,calc((100vh - 70px)*1.78));max-height:calc(100% - 52px);aspect-ratio:16/9;image-rendering:pixelated;border:2px solid #4a3a70;background:#0d0818;touch-action:manipulation}
 #mapHint{font:600 11px var(--ui);color:#cdb8ee;letter-spacing:.06em}
+#hackBox{position:absolute;inset:0;z-index:9;background:rgba(2,12,10,.94);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;pointer-events:auto;font-family:ui-monospace,Menlo,Consolas,monospace;color:#9dffd6}
+#hackBox[hidden]{display:none}
+#hackBox h2{margin:0;font:900 16px var(--disp);letter-spacing:.2em;color:#3dffb0}
+#hackMsg{font-size:12px;min-height:16px}#hackProg{font-size:14px;letter-spacing:.2em;min-height:18px}
+#hackPad{display:flex;gap:10px}
+.hk{width:min(17vw,25vh);height:min(17vw,25vh);max-width:84px;max-height:84px;font-size:32px;background:#07140f;color:var(--c);border:2px solid var(--c);border-radius:8px;opacity:.45;touch-action:manipulation}
+.hk.lit{opacity:1;background:var(--c);color:#04130d;box-shadow:0 0 18px var(--c)}
+#hackX{background:none;border:1px solid #3dffb066;color:#9dffd6;font:600 11px var(--ui);padding:4px 10px;border-radius:6px}
 #radio{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(96%,540px);z-index:7;display:flex;gap:10px;padding:10px;background:rgba(2,20,15,.94);border:2px solid #3dffb0;box-shadow:0 0 22px #3dffb055,inset 0 0 26px #3dffb022;font-family:ui-monospace,Menlo,Consolas,monospace;color:#9dffd6;pointer-events:auto;overflow:hidden;animation:rflk .13s infinite alternate}
 #radio[hidden]{display:none}
 #radio::after{content:"";position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(0deg,rgba(0,0,0,.3) 0 1px,transparent 1px 3px);mix-blend-mode:multiply}
@@ -128,6 +136,7 @@ h1 em{display:block;font-style:normal;color:var(--cyan);text-shadow:0 0 18px var
     <div class="bar"><button id="btnMap" aria-label="Carte">▦</button><button id="btnFs" aria-label="Plein écran" hidden>⛶</button><button id="btnMute" aria-label="Son">♪</button><button id="btnPause" aria-label="Pause">II</button></div>
     <div id="mapBox" hidden><canvas id="mapCv" width="640" height="360"></canvas><div id="mapHint">CARTE · touche pour fermer</div></div>
     <div id="radio" hidden><canvas id="rPort" width="48" height="48"></canvas><div id="rTxt"><div id="rHead"><span>GÉN. SHEEPARD</span><span><i>●</i> 140.85</span></div><div id="rBody"></div><div id="rNext">▼ SUITE</div></div></div>
+    <div id="hackBox" hidden><h2>PIRATAGE DE LA BORNE</h2><div id="hackMsg"></div><div id="hackPad"></div><div id="hackProg"></div><button id="hackX">ANNULER</button></div>
     <div id="lvlBox" hidden><h2 id="lvlTitle">NIVEAU 2</h2><div id="lvlSub">Choisis une amélioration</div><div id="lvlOpts"></div></div>
     <div id="pauseBox" hidden><h2>PAUSE</h2><button class="btn" id="btnResume">Reprendre</button><button class="btn alt" id="btnQuit">Quitter</button></div>
   </div>

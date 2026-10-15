@@ -182,6 +182,7 @@ function renderGame(ctx, g, big) {
   }
   if (room.type === 'vault') drawText(ctx, 'CACHE SECRETE', 160, 40, '#8ee8ff', 2, 'c');
   if (room.type === 'challenge' && !room.cleared) drawText(ctx, 'DEFI', 160, 40, '#ff6a8a', 2, 'c');
+  if (room.tp) drawTP(ctx, room, g);
   // portes
   const doorCol = room.locked ? '#ff3a6a' : '#5dff6a';
   const dls = [], ex = room.exits;
@@ -393,6 +394,7 @@ function drawHUD(ctx, g) {
     if (q.rows > ROWS) { ctx.fillStyle = '#12081f'; ctx.fillRect(x - 1, y + 5, 9, ph - 4); }
     ctx.globalAlpha = q.visited ? 1 : .55; ctx.fillStyle = col; ctx.fillRect(x, y, 7, th); ctx.globalAlpha = 1;
     if (q.rows > ROWS) { ctx.fillStyle = 'rgba(0,0,0,.25)'; ctx.fillRect(x, y + 5, 7, 2); }
+    if (q.tp && q.visited) { ctx.fillStyle = q.tp.active ? '#38e8ff' : '#3a5a7a'; ctx.fillRect(x + 5, y, 2, 2); }
     if (q === cur) { ctx.fillStyle = '#fff'; const hy = q.rows > ROWS ? Math.min(th - 4, Math.max(0, Math.round((p.cy / (q.rows * T)) * th) - 1)) : 1; ctx.fillRect(x + 2, y + hy, 3, 3); }
   }
   drawText(ctx, 'SECTEUR ' + g.floor + '/6', W - 4, mgy + gh * ph + 1, '#cdb8ee', 1, 'r');
@@ -410,7 +412,7 @@ function drawHUD(ctx, g) {
 
 
 /* ---------- Grande carte ---------- */
-function drawBigMap(cx, g) {
+function drawBigMap(cx, g, sel) {
   const CW = 640, CH = 360, gw = g.grid.w, gh = g.grid.h;
   cx.imageSmoothingEnabled = false; cx.fillStyle = '#0d0818'; cx.fillRect(0, 0, CW, CH);
   cx.fillStyle = '#2a1f45'; for (let i = 0; i < 90; i++) cx.fillRect((i * 97) % CW, (i * 53) % CH, 1, 1);
@@ -433,8 +435,10 @@ function drawBigMap(cx, g) {
       dot(x + bw, Math.round(ly)); dot(x2, Math.round(ly2));
     }
   }
+  g._mapRects = [];
   for (const q of g.rooms) {
     if (!known(q.i)) continue; const [x, y] = pos(q), tall = q.rows > ROWS, th = tall ? chh + bh : bh;
+    g._mapRects.push({ i: q.i, x: x - 3, y: y - 3, w: bw + 6, h: th + 6 });
     const base = !q.visited ? '#3a3058' : (COL[q.type] || (q.cleared ? '#5a4a80' : '#c04060'));
     cx.fillStyle = '#12081f'; cx.fillRect(x - 2, y - 2, bw + 4, th + 4);
     cx.globalAlpha = q.visited ? 1 : .5; cx.fillStyle = base; cx.fillRect(x, y, bw, th); cx.globalAlpha = 1;
@@ -442,11 +446,42 @@ function drawBigMap(cx, g) {
     if (tall) { cx.fillStyle = 'rgba(255,255,255,.28)'; for (let k = 1; k < 4; k++) cx.fillRect(x + 4 + (k % 2) * (bw - 18), y + Math.round(th * k / 4), 14, 2); cx.fillStyle = 'rgba(0,0,0,.35)'; cx.fillRect(x, y + bh, bw, 2); }
     drawText(cx, !q.visited ? (tall ? 'VERTICAL' : '?') : tall ? 'VERTICAL' : (NAME[q.type] || ''), x + bw / 2, y + 3, q.visited ? '#0d0818' : '#8a7ab0', 1, 'c');
     if (q.cleared && q.type === 'combat') drawText(cx, 'OK', x + bw / 2, y + bh - 9, '#0d0818', 1, 'c');
+    if (q.tp && q.visited) { const ac = q.tp.active, tx = x + bw - 9, ty = y + th - 9; cx.fillStyle = '#0d0818'; cx.fillRect(tx - 1, ty - 1, 9, 9); cx.fillStyle = ac ? '#38e8ff' : '#4a6a8a'; cx.fillRect(tx + 2, ty, 3, 7); cx.fillRect(tx, ty, 7, 2); }
+    if (sel && q.tp && q.tp.active && q !== g.room) { cx.strokeStyle = g.frame % 30 < 18 ? '#38e8ff' : '#ffffff'; cx.lineWidth = 2; cx.strokeRect(x - 3, y - 3, bw + 6, th + 6); }
     if (q === g.room) { if (g.frame % 40 < 28) { cx.fillStyle = '#fff'; const hy = tall ? Math.min(th - 8, Math.max(0, Math.round(g.p.cy / (q.rows * T) * th) - 3)) : bh / 2 - 1; cx.fillRect(x + bw / 2 - 3, y + hy, 7, 7); cx.fillStyle = '#12081f'; cx.fillRect(x + bw / 2 - 1, y + hy + 2, 3, 3); } }
   }
   // légende
   let lx = 12; const ly = CH - 30;
   for (const [k, c] of [['DEPART', '#8a7ab0'], ['COMBAT', '#c04060'], ['OBJET', '#ffd23a'], ['SOIN', '#ff5cc8'], ['ATELIER', '#ffe38a'], ['CACHE', '#8ee8ff'], ['DEFI', '#ff9a4a'], ['BOSS', '#ff3a6a']]) { cx.fillStyle = c; cx.fillRect(lx, ly, 6, 6); drawText(cx, k, lx + 9, ly, '#cdb8ee', 1); lx += 9 + textW(k) + 9; }
-  dot(18, CH - 12); drawText(cx, 'PASSAGE VERS UNE AUTRE SALLE', 28, CH - 15, '#9a8abb', 1);
+  dot(18, CH - 12); drawText(cx, 'PASSAGE', 28, CH - 15, '#9a8abb', 1); cx.fillStyle = '#38e8ff'; cx.fillRect(74, CH - 15, 3, 7); cx.fillRect(72, CH - 15, 7, 2); drawText(cx, 'BORNE ACTIVE', 84, CH - 15, '#9a8abb', 1);
   drawText(cx, 'SALLE VERTICALE = PLUSIEURS ETAGES', CW - 12, CH - 15, '#9a8abb', 1, 'r');
+}
+
+
+/* ---------- Borne de téléportation ---------- */
+function drawTP(ctx, room, g) {
+  const t = room.tp, fr = g.frame, x = t.x, fy = 160, on = t.active, lk = t.lock > 0, dim = room.locked;
+  const col = on ? '#38e8ff' : lk ? '#ff4a5a' : '#ffb347';
+  ctx.globalAlpha = dim ? .5 : 1;
+  // plateforme de téléportation
+  ctx.fillStyle = '#0d0818'; ctx.fillRect(x + 14, fy - 4, 28, 4); ctx.fillStyle = '#2b2150'; ctx.fillRect(x + 15, fy - 3, 26, 3);
+  ctx.fillStyle = on ? col : '#4a3d6e'; ctx.fillRect(x + 15, fy - 4, 26, 1);
+  if (on) {
+    const a = .3 + .12 * Math.sin(fr / 8); ctx.globalAlpha = (dim ? .5 : 1) * a; ctx.fillStyle = col; ctx.fillRect(x + 19, fy - 30, 18, 26);
+    ctx.globalAlpha = (dim ? .5 : 1) * .8; for (let k = 0; k < 3; k++) { const yy = fy - 6 - ((fr * .6 + k * 9) % 26); ctx.fillRect(x + 19, Math.round(yy), 18, 1); }
+    ctx.globalAlpha = dim ? .5 : 1; drawGlow(ctx, x + 28, fy - 14, 22, col, .35);
+  }
+  // borne (écran + clavier)
+  ctx.fillStyle = '#0d0818'; ctx.fillRect(x - 1, fy - 21, 14, 21); ctx.fillStyle = '#2b2150'; ctx.fillRect(x, fy - 20, 12, 20);
+  ctx.fillStyle = '#06141a'; ctx.fillRect(x + 1, fy - 18, 10, 8);
+  ctx.fillStyle = col;
+  if (on) { ctx.fillRect(x + 3, fy - 16, 6, 1); ctx.fillRect(x + 3, fy - 14, 4, 1); ctx.fillRect(x + 3, fy - 12, 6, 1); }
+  else if (lk) { ctx.fillRect(x + 3, fy - 17, 1, 1); ctx.fillRect(x + 7, fy - 17, 1, 1); ctx.fillRect(x + 4, fy - 15, 3, 1); ctx.fillRect(x + 3, fy - 13, 1, 1); ctx.fillRect(x + 7, fy - 13, 1, 1); }
+  else { ctx.globalAlpha = (dim ? .5 : 1) * (fr % 40 < 24 ? 1 : .35); ctx.fillRect(x + 3, fy - 16, 3, 1); ctx.fillRect(x + 3, fy - 13, 5, 1); ctx.globalAlpha = dim ? .5 : 1; }
+  ctx.fillStyle = '#4a3d6e'; ctx.fillRect(x + 1, fy - 8, 10, 3); ctx.fillStyle = col; ctx.fillRect(x + 2, fy - 7, 2, 1); ctx.fillRect(x + 6, fy - 7, 2, 1);
+  ctx.globalAlpha = 1; drawGlow(ctx, x + 6, fy - 14, 14, col, t.near ? .55 : .22);
+  if (t.near && !dim) {
+    const msg = on ? 'SAUT : TELEPORTER' : lk ? 'VERROUILLE ' + Math.ceil(t.lock / 60) + 'S' : 'SAUT : PIRATER LA BORNE';
+    drawText(ctx, msg, x + 28 + 1, fy - 37, '#12081f', 1, 'c'); drawText(ctx, msg, x + 28, fy - 38, on ? '#9ff4ff' : lk ? '#ff6a8a' : '#ffd9a0', 1, 'c');
+  }
 }

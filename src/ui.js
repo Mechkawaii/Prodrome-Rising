@@ -88,7 +88,7 @@
   $('btnBack').onclick = () => show('title');
   $('btnAgain').onclick = () => { audio(); start(); };
   $('btnChange').onclick = () => { openSelect(dailyMode); };
-  $('btnPause').onclick = () => { if (choosing || radio || mapOpen) return; audio(); setPause(!paused); };
+  $('btnPause').onclick = () => { if (choosing || radio || mapOpen || hack) return; audio(); setPause(!paused); };
   $('btnResume').onclick = () => setPause(false);
   $('btnQuit').onclick = () => { setPause(false); running = false; show('title'); };
   $('btnMute').onclick = () => { Sound.on = !Sound.on; $('btnMute').textContent = Sound.on ? '♪' : '×'; Sound.init(); Music.sync(); };
@@ -153,14 +153,60 @@
     drawSheepard(rctx, radio.t, talking, Math.min(1, radio.t / 14));
   }
   /* ---------- Grande carte ---------- */
-  let mapOpen = false; const mctx = $('mapCv').getContext('2d');
-  function toggleMap(v) {
-    if (!running || !game || choosing || radio) return;
-    v = v === undefined ? !mapOpen : v; if (v === mapOpen) return; mapOpen = v; $('mapBox').hidden = !v;
-    if (v) { paused = true; Input.reset(); releaseAll(); Music.stop(); drawBigMap(mctx, game); } else { paused = false; last = 0; Input.reset(); Music.sync(); }
+  let mapOpen = false, mapSel = false, hack = null; const mctx = $('mapCv').getContext('2d');
+  function toggleMap(v, sel) {
+    if (!running || !game || choosing || radio || hack) return;
+    v = v === undefined ? !mapOpen : v; if (v === mapOpen) return; mapOpen = v; mapSel = !!(v && sel); $('mapBox').hidden = !v;
+    $('mapHint').textContent = mapSel ? 'TELEPORTATION · touche une salle avec borne active' : 'CARTE · touche pour fermer';
+    if (v) { paused = true; Input.reset(); releaseAll(); Music.stop(); drawBigMap(mctx, game, mapSel); } else { paused = false; last = 0; Input.reset(); Music.sync(); }
   }
   $('btnMap').onclick = () => { audio(); toggleMap(); };
-  $('mapBox').addEventListener('pointerdown', e => { e.preventDefault(); toggleMap(false); });
+  $('mapBox').addEventListener('pointerdown', e => {
+    e.preventDefault();
+    if (mapSel && game && game._mapRects) {
+      const r = $('mapCv').getBoundingClientRect(), x = (e.clientX - r.left) * 640 / r.width, y = (e.clientY - r.top) * 360 / r.height;
+      const h = game._mapRects.find(q => x >= q.x && x <= q.x + q.w && y >= q.y && y <= q.y + q.h);
+      const t = h && game.rooms[h.i];
+      if (t && t.tp && t.tp.active && t !== game.rooms[game.ri]) { toggleMap(false); game.teleportTo(h.i); return; }
+    }
+    toggleMap(false);
+  });
+  /* ---------- Mini-jeu de piratage (Simon) ---------- */
+  const HK = [['▲', '#ffd23a', 'ArrowUp'], ['◀', '#3dd6ff', 'ArrowLeft'], ['▶', '#ff5fa8', 'ArrowRight'], ['▼', '#6dff7a', 'ArrowDown']];
+  function openHack() {
+    const g = game; if (!g || hack || choosing || radio || mapOpen) return;
+    const n = 3 + Math.ceil(g.floor / 2), seq = []; for (let i = 0; i < n; i++) seq.push((Math.random() * 4) | 0);
+    hack = { seq, pos: 0, tries: 3, show: 0, phase: 'show', t: 0 };
+    paused = true; Input.reset(); releaseAll(); Music.stop();
+    const pad = $('hackPad'); pad.innerHTML = '';
+    HK.forEach((k, i) => { const b = document.createElement('button'); b.className = 'hk'; b.style.setProperty('--c', k[1]); b.textContent = k[0]; b.onclick = () => hackPress(i); pad.appendChild(b); });
+    $('hackBox').hidden = false; hackReplay();
+  }
+  function hackLit(i, on) { const b = $('hackPad').children[i]; if (b) b.classList.toggle('lit', on); }
+  function hackMsg(t, c) { const m = $('hackMsg'); m.textContent = t; m.style.color = c || ''; }
+  function hackReplay() {
+    const h = hack; h.phase = 'show'; h.pos = 0; hackMsg('MEMORISE LA SEQUENCE · essais ' + h.tries); $('hackProg').textContent = '';
+    h.seq.forEach((v, i) => { setTimeout(() => { if (hack !== h) return; hackLit(v, true); Sound.play('hit'); }, 600 + i * 650); setTimeout(() => { if (hack !== h) return; hackLit(v, false); }, 600 + i * 650 + 400); });
+    setTimeout(() => { if (hack !== h) return; h.phase = 'in'; hackMsg('A TOI · répète la séquence', '#9dffd6'); }, 600 + h.seq.length * 650);
+  }
+  function hackPress(i) {
+    const h = hack; if (!h || h.phase !== 'in') return;
+    hackLit(i, true); setTimeout(() => hackLit(i, false), 150);
+    if (h.seq[h.pos] === i) {
+      h.pos++; $('hackProg').textContent = '■'.repeat(h.pos) + '□'.repeat(h.seq.length - h.pos);
+      if (h.pos >= h.seq.length) { h.phase = 'done'; hackMsg('ACCES ACCORDE', '#6dff7a'); setTimeout(() => closeHack(true), 700); }
+    } else {
+      h.tries--; h.phase = 'wait';
+      if (h.tries <= 0) { hackMsg('ECHEC · BORNE VERROUILLEE', '#ff5a5a'); setTimeout(() => closeHack(false), 900); }
+      else { hackMsg('ERREUR · essais restants ' + h.tries, '#ff5a5a'); setTimeout(() => { if (hack === h) hackReplay(); }, 800); }
+    }
+  }
+  function closeHack(ok) {
+    const g = game; hack = null; $('hackBox').hidden = true; paused = false; last = 0; Input.reset(); Music.sync();
+    if (!g) return; const r = g.rooms[g.ri];
+    if (ok) g.tpActivate(); else if (r && r.tp) { r.tp.lock = 1200; g.text(g.player.cx, g.player.y - 8, 'VERROUILLE', '#ff5a5a'); }
+  }
+  $('hackX').onclick = () => { if (hack) closeHack(null); };
   function setPause(v) { paused = v; $('pauseBox').hidden = !v; Input.reset(); if (v) Music.stop(); else Music.sync(); }
   function audio() { Sound.init(); Music.sync(); }
   function renderAch() {
@@ -192,7 +238,7 @@
     if (save) restore(save);
     lastFloor = 0;
     Input.reset(); running = true; paused = false; acc = 0; last = 0;
-    $('pauseBox').hidden = true; $('lvlBox').hidden = true; choosing = null; radio = null; mapOpen = false; $('mapBox').hidden = true; radioQ.length = 0; $('radio').hidden = true; finalOk = false; winSaid = false; lastBoss = 0; $('hud').hidden = false;
+    $('pauseBox').hidden = true; $('lvlBox').hidden = true; choosing = null; radio = null; hack = null; $('hackBox').hidden = true; mapOpen = false; mapSel = false; $('mapBox').hidden = true; radioQ.length = 0; $('radio').hidden = true; finalOk = false; winSaid = false; lastBoss = 0; $('hud').hidden = false;
     SCR.forEach(s => $(s).hidden = true);
     setShown = false;
   }
@@ -227,6 +273,7 @@
   /* ---------- Clavier / souris ---------- */
   addEventListener('keydown', e => {
     if (radio) { if (!['F5', 'F12'].includes(e.code)) { if (['Enter', 'Space', 'KeyZ', 'KeyX', 'KeyJ', 'KeyK', 'Escape', 'ArrowUp', 'KeyW'].includes(e.code)) { e.preventDefault(); radioAdvance(); } return; } }
+    if (hack) { const hm = { ArrowUp: 0, KeyW: 0, Digit1: 0, ArrowLeft: 1, KeyA: 1, Digit2: 1, ArrowRight: 2, KeyD: 2, Digit3: 2, ArrowDown: 3, KeyS: 3, Digit4: 3 }[e.code]; if (hm !== undefined) { e.preventDefault(); hackPress(hm); } else if (e.code === 'Escape') closeHack(null); return; }
     if (mapOpen) { if (['KeyM', 'Escape', 'Enter', 'Space', 'Tab'].includes(e.code)) { e.preventDefault(); toggleMap(false); } return; }
     if (e.code === 'KeyM' && running && !paused) { e.preventDefault(); toggleMap(true); return; }
     if (choosing && ['Digit1', 'Digit2', 'Digit3'].includes(e.code)) { pickUp(+e.code.slice(5) - 1); return; }
@@ -318,6 +365,7 @@
         if (game.floor !== lastFloor) { const first = !lastFloor; lastFloor = game.floor; saveRun(); if (first && game.floor === 1 && !game.stats.bossKills) say('intro'); say('f' + game.floor); }
         if (game.stats.bossKills > lastBoss) { lastBoss = game.stats.bossKills; if (game.state === 'play') say('boss', BOSSES[Math.min(5, game.floor - 1)].name); }
         if (game.pendingLevel > 0 && game.state === 'play' && !choosing && !radio) showLevel();
+        if (game.uiReq) { const q = game.uiReq; game.uiReq = null; if (q === 'hack') openHack(); else if (q === 'tp') toggleMap(true, true); }
         if (game.frame % 30 === 0) checkAch();
         tickAch();
         if (game.state === 'dead' && game.endT > 100) endScreen(false);
@@ -325,7 +373,7 @@
         else if (game.state === 'win' && finalOk) endScreen(true);
       }
       renderGame(ctx, game);
-      if (mapOpen) drawBigMap(mctx, game);
+      if (mapOpen) drawBigMap(mctx, game, mapSel);
       updateHud();
     } else if (game) { renderGame(ctx, game); }
   }

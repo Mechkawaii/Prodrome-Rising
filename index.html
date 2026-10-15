@@ -77,6 +77,14 @@ h1 em{display:block;font-style:normal;color:var(--cyan);text-shadow:0 0 18px var
 #mapBox[hidden]{display:none}
 #mapCv{width:min(96%,calc((100vh - 70px)*1.78));max-height:calc(100% - 52px);aspect-ratio:16/9;image-rendering:pixelated;border:2px solid #4a3a70;background:#0d0818;touch-action:manipulation}
 #mapHint{font:600 11px var(--ui);color:#cdb8ee;letter-spacing:.06em}
+#hackBox{position:absolute;inset:0;z-index:9;background:rgba(2,12,10,.94);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;pointer-events:auto;font-family:ui-monospace,Menlo,Consolas,monospace;color:#9dffd6}
+#hackBox[hidden]{display:none}
+#hackBox h2{margin:0;font:900 16px var(--disp);letter-spacing:.2em;color:#3dffb0}
+#hackMsg{font-size:12px;min-height:16px}#hackProg{font-size:14px;letter-spacing:.2em;min-height:18px}
+#hackPad{display:flex;gap:10px}
+.hk{width:min(17vw,25vh);height:min(17vw,25vh);max-width:84px;max-height:84px;font-size:32px;background:#07140f;color:var(--c);border:2px solid var(--c);border-radius:8px;opacity:.45;touch-action:manipulation}
+.hk.lit{opacity:1;background:var(--c);color:#04130d;box-shadow:0 0 18px var(--c)}
+#hackX{background:none;border:1px solid #3dffb066;color:#9dffd6;font:600 11px var(--ui);padding:4px 10px;border-radius:6px}
 #radio{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(96%,540px);z-index:7;display:flex;gap:10px;padding:10px;background:rgba(2,20,15,.94);border:2px solid #3dffb0;box-shadow:0 0 22px #3dffb055,inset 0 0 26px #3dffb022;font-family:ui-monospace,Menlo,Consolas,monospace;color:#9dffd6;pointer-events:auto;overflow:hidden;animation:rflk .13s infinite alternate}
 #radio[hidden]{display:none}
 #radio::after{content:"";position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(0deg,rgba(0,0,0,.3) 0 1px,transparent 1px 3px);mix-blend-mode:multiply}
@@ -131,6 +139,7 @@ h1 em{display:block;font-style:normal;color:var(--cyan);text-shadow:0 0 18px var
     <div class="bar"><button id="btnMap" aria-label="Carte">▦</button><button id="btnFs" aria-label="Plein écran" hidden>⛶</button><button id="btnMute" aria-label="Son">♪</button><button id="btnPause" aria-label="Pause">II</button></div>
     <div id="mapBox" hidden><canvas id="mapCv" width="640" height="360"></canvas><div id="mapHint">CARTE · touche pour fermer</div></div>
     <div id="radio" hidden><canvas id="rPort" width="48" height="48"></canvas><div id="rTxt"><div id="rHead"><span>GÉN. SHEEPARD</span><span><i>●</i> 140.85</span></div><div id="rBody"></div><div id="rNext">▼ SUITE</div></div></div>
+    <div id="hackBox" hidden><h2>PIRATAGE DE LA BORNE</h2><div id="hackMsg"></div><div id="hackPad"></div><div id="hackProg"></div><button id="hackX">ANNULER</button></div>
     <div id="lvlBox" hidden><h2 id="lvlTitle">NIVEAU 2</h2><div id="lvlSub">Choisis une amélioration</div><div id="lvlOpts"></div></div>
     <div id="pauseBox" hidden><h2>PAUSE</h2><button class="btn" id="btnResume">Reprendre</button><button class="btn alt" id="btnQuit">Quitter</button></div>
   </div>
@@ -1148,6 +1157,10 @@ class Game {
     }
     for (const r of rooms) if (r.type === 'vault') r.hidden = true;
     for (const r of rooms) this.setDoors(r, rooms);
+    { // bornes de téléportation : départ (déjà active), salle de soin avant le boss, quelques salles de combat
+      const combats = shuffle(rooms.filter(r => r.type === 'combat' && !r.tall)), nC = [1, 1, 2, 2, 2, 2][this.floor - 1];
+      for (const r of rooms.filter(r => r.type === 'start' || r.type === 'heal').concat(combats.slice(0, nC))) { const sp = this.tpSpot(r); if (sp !== null) r.tp = { x: sp, active: r.type === 'start', lock: 0, near: false }; }
+    }
     this.grid = { w: GW, h: GH };
     if (this.daily) seedRng(savedSeed + 977);
     this.rooms = rooms; this.biome = BIOMES[this.floor - 1];
@@ -1244,6 +1257,7 @@ class Game {
     if (from === 3) { p.x = ledge ? 282 : 26; p.y = 80 - p.h; }
     else if (from === 1) { p.x = T + 6; p.y = hy + 160 - p.h; }
     else if (from === 2) { p.x = W - T - 16; p.y = hy + 160 - p.h; }
+    else if (from === 4 && r.tp) { p.x = r.tp.x + 20; p.y = 160 - p.h; }
     this.camY = clamp(p.y + p.h / 2 - H / 2, 0, r.rows * T - H);
     p.vx = 0; p.vy = 0; Input.endFrame();
     this.staticDirty = true;
@@ -1430,6 +1444,35 @@ class Game {
     this.banner = 'Prodrome vaincu !'; this.bannerT = 150;
   }
   dropCoins(x, y, n) { for (let i = 0; i < n; i++) this.pickups.push({ type: 'coin', x: x - 2, y: y - 2, vx: rr(-1.4, 1.4), vy: -rr(2, 3.6), age: 0, bob: rnd() * 6 }); }
+  tpSpot(room) {
+    const t = room.tiles, ok = [];
+    for (let c = 3; c <= COLS - 6; c++) {
+      let good = true;
+      for (let cc = c; cc < c + 3 && good; cc++) { for (let r = 5; r <= 9; r++) if (t[r * COLS + cc] !== 0) good = false; const f = t[10 * COLS + cc]; if (f !== 1 && f !== 2) good = false; }
+      if (room.type === 'heal' && c * 16 + 48 > 100 && c * 16 < 215) good = false;
+      if (good) ok.push(c * 16);
+    }
+    return ok.length ? pick(ok) : null;
+  }
+  updateTP() {
+    const r = this.room, tp = r.tp, p = this.p; if (!tp) return;
+    if (tp.lock > 0) tp.lock--;
+    tp.near = !r.locked && Math.abs(p.cx - (tp.x + 14)) < 22 && p.y + p.h > 150;
+    if (tp.near && Input.jumpPressed) {
+      if (tp.active) { const n = this.rooms.filter(q => q.tp && q.tp.active && q !== r).length; if (n) this.uiReq = 'tp'; else this.text(p.cx, p.y - 8, 'AUCUNE AUTRE BORNE', '#8a7ab0'); }
+      else if (tp.lock > 0) { this.text(p.cx, p.y - 8, 'VERROUILLE', '#ff6a8a'); this.sfx('warn'); }
+      else this.uiReq = 'hack';
+    }
+  }
+  tpActivate() {
+    const tp = this.room.tp; if (!tp) return; tp.active = true; this.sfx('win'); this.fx(tp.x + 26, 146, 26, '#38e8ff', 3); this.addXp(1);
+    this.toast = { title: 'Borne piratée', desc: 'Téléportation disponible depuis cette salle.', col: '#38e8ff', t: 220 };
+  }
+  teleportTo(i) {
+    const to = this.rooms[i]; if (!to || !to.tp || !to.tp.active || i === this.ri) return false;
+    this.fx(this.p.cx, this.p.cy, 20, '#38e8ff', 3); this.loadRoom(i, 4); this.flashT = 14; this.sfx('ult'); this.fx(this.p.cx, this.p.cy, 20, '#38e8ff', 3);
+    this.banner = 'Téléportation'; this.bannerT = 70; return true;
+  }
   // point d'appui valide (sol ou plateforme) près d'une abscisse, dans l'étage où se trouve le joueur
   standSpot(prefX) {
     const r = this.room, p = this.p; if (!r.spawnPts || !r.spawnPts.length) return null;
@@ -1502,6 +1545,7 @@ class Game {
     const p = this.p;
     if (this.state !== 'play') { this.endT++; this.updateFx(); Input.endFrame(); return; }
     this.updatePlayer();
+    this.updateTP();
     this.updateRoomLogic();
     this.updateEnemies();
     this.updateBullets();
@@ -2131,6 +2175,7 @@ function renderGame(ctx, g, big) {
   }
   if (room.type === 'vault') drawText(ctx, 'CACHE SECRETE', 160, 40, '#8ee8ff', 2, 'c');
   if (room.type === 'challenge' && !room.cleared) drawText(ctx, 'DEFI', 160, 40, '#ff6a8a', 2, 'c');
+  if (room.tp) drawTP(ctx, room, g);
   // portes
   const doorCol = room.locked ? '#ff3a6a' : '#5dff6a';
   const dls = [], ex = room.exits;
@@ -2342,6 +2387,7 @@ function drawHUD(ctx, g) {
     if (q.rows > ROWS) { ctx.fillStyle = '#12081f'; ctx.fillRect(x - 1, y + 5, 9, ph - 4); }
     ctx.globalAlpha = q.visited ? 1 : .55; ctx.fillStyle = col; ctx.fillRect(x, y, 7, th); ctx.globalAlpha = 1;
     if (q.rows > ROWS) { ctx.fillStyle = 'rgba(0,0,0,.25)'; ctx.fillRect(x, y + 5, 7, 2); }
+    if (q.tp && q.visited) { ctx.fillStyle = q.tp.active ? '#38e8ff' : '#3a5a7a'; ctx.fillRect(x + 5, y, 2, 2); }
     if (q === cur) { ctx.fillStyle = '#fff'; const hy = q.rows > ROWS ? Math.min(th - 4, Math.max(0, Math.round((p.cy / (q.rows * T)) * th) - 1)) : 1; ctx.fillRect(x + 2, y + hy, 3, 3); }
   }
   drawText(ctx, 'SECTEUR ' + g.floor + '/6', W - 4, mgy + gh * ph + 1, '#cdb8ee', 1, 'r');
@@ -2359,7 +2405,7 @@ function drawHUD(ctx, g) {
 
 
 /* ---------- Grande carte ---------- */
-function drawBigMap(cx, g) {
+function drawBigMap(cx, g, sel) {
   const CW = 640, CH = 360, gw = g.grid.w, gh = g.grid.h;
   cx.imageSmoothingEnabled = false; cx.fillStyle = '#0d0818'; cx.fillRect(0, 0, CW, CH);
   cx.fillStyle = '#2a1f45'; for (let i = 0; i < 90; i++) cx.fillRect((i * 97) % CW, (i * 53) % CH, 1, 1);
@@ -2382,8 +2428,10 @@ function drawBigMap(cx, g) {
       dot(x + bw, Math.round(ly)); dot(x2, Math.round(ly2));
     }
   }
+  g._mapRects = [];
   for (const q of g.rooms) {
     if (!known(q.i)) continue; const [x, y] = pos(q), tall = q.rows > ROWS, th = tall ? chh + bh : bh;
+    g._mapRects.push({ i: q.i, x: x - 3, y: y - 3, w: bw + 6, h: th + 6 });
     const base = !q.visited ? '#3a3058' : (COL[q.type] || (q.cleared ? '#5a4a80' : '#c04060'));
     cx.fillStyle = '#12081f'; cx.fillRect(x - 2, y - 2, bw + 4, th + 4);
     cx.globalAlpha = q.visited ? 1 : .5; cx.fillStyle = base; cx.fillRect(x, y, bw, th); cx.globalAlpha = 1;
@@ -2391,13 +2439,44 @@ function drawBigMap(cx, g) {
     if (tall) { cx.fillStyle = 'rgba(255,255,255,.28)'; for (let k = 1; k < 4; k++) cx.fillRect(x + 4 + (k % 2) * (bw - 18), y + Math.round(th * k / 4), 14, 2); cx.fillStyle = 'rgba(0,0,0,.35)'; cx.fillRect(x, y + bh, bw, 2); }
     drawText(cx, !q.visited ? (tall ? 'VERTICAL' : '?') : tall ? 'VERTICAL' : (NAME[q.type] || ''), x + bw / 2, y + 3, q.visited ? '#0d0818' : '#8a7ab0', 1, 'c');
     if (q.cleared && q.type === 'combat') drawText(cx, 'OK', x + bw / 2, y + bh - 9, '#0d0818', 1, 'c');
+    if (q.tp && q.visited) { const ac = q.tp.active, tx = x + bw - 9, ty = y + th - 9; cx.fillStyle = '#0d0818'; cx.fillRect(tx - 1, ty - 1, 9, 9); cx.fillStyle = ac ? '#38e8ff' : '#4a6a8a'; cx.fillRect(tx + 2, ty, 3, 7); cx.fillRect(tx, ty, 7, 2); }
+    if (sel && q.tp && q.tp.active && q !== g.room) { cx.strokeStyle = g.frame % 30 < 18 ? '#38e8ff' : '#ffffff'; cx.lineWidth = 2; cx.strokeRect(x - 3, y - 3, bw + 6, th + 6); }
     if (q === g.room) { if (g.frame % 40 < 28) { cx.fillStyle = '#fff'; const hy = tall ? Math.min(th - 8, Math.max(0, Math.round(g.p.cy / (q.rows * T) * th) - 3)) : bh / 2 - 1; cx.fillRect(x + bw / 2 - 3, y + hy, 7, 7); cx.fillStyle = '#12081f'; cx.fillRect(x + bw / 2 - 1, y + hy + 2, 3, 3); } }
   }
   // légende
   let lx = 12; const ly = CH - 30;
   for (const [k, c] of [['DEPART', '#8a7ab0'], ['COMBAT', '#c04060'], ['OBJET', '#ffd23a'], ['SOIN', '#ff5cc8'], ['ATELIER', '#ffe38a'], ['CACHE', '#8ee8ff'], ['DEFI', '#ff9a4a'], ['BOSS', '#ff3a6a']]) { cx.fillStyle = c; cx.fillRect(lx, ly, 6, 6); drawText(cx, k, lx + 9, ly, '#cdb8ee', 1); lx += 9 + textW(k) + 9; }
-  dot(18, CH - 12); drawText(cx, 'PASSAGE VERS UNE AUTRE SALLE', 28, CH - 15, '#9a8abb', 1);
+  dot(18, CH - 12); drawText(cx, 'PASSAGE', 28, CH - 15, '#9a8abb', 1); cx.fillStyle = '#38e8ff'; cx.fillRect(74, CH - 15, 3, 7); cx.fillRect(72, CH - 15, 7, 2); drawText(cx, 'BORNE ACTIVE', 84, CH - 15, '#9a8abb', 1);
   drawText(cx, 'SALLE VERTICALE = PLUSIEURS ETAGES', CW - 12, CH - 15, '#9a8abb', 1, 'r');
+}
+
+
+/* ---------- Borne de téléportation ---------- */
+function drawTP(ctx, room, g) {
+  const t = room.tp, fr = g.frame, x = t.x, fy = 160, on = t.active, lk = t.lock > 0, dim = room.locked;
+  const col = on ? '#38e8ff' : lk ? '#ff4a5a' : '#ffb347';
+  ctx.globalAlpha = dim ? .5 : 1;
+  // plateforme de téléportation
+  ctx.fillStyle = '#0d0818'; ctx.fillRect(x + 14, fy - 4, 28, 4); ctx.fillStyle = '#2b2150'; ctx.fillRect(x + 15, fy - 3, 26, 3);
+  ctx.fillStyle = on ? col : '#4a3d6e'; ctx.fillRect(x + 15, fy - 4, 26, 1);
+  if (on) {
+    const a = .3 + .12 * Math.sin(fr / 8); ctx.globalAlpha = (dim ? .5 : 1) * a; ctx.fillStyle = col; ctx.fillRect(x + 19, fy - 30, 18, 26);
+    ctx.globalAlpha = (dim ? .5 : 1) * .8; for (let k = 0; k < 3; k++) { const yy = fy - 6 - ((fr * .6 + k * 9) % 26); ctx.fillRect(x + 19, Math.round(yy), 18, 1); }
+    ctx.globalAlpha = dim ? .5 : 1; drawGlow(ctx, x + 28, fy - 14, 22, col, .35);
+  }
+  // borne (écran + clavier)
+  ctx.fillStyle = '#0d0818'; ctx.fillRect(x - 1, fy - 21, 14, 21); ctx.fillStyle = '#2b2150'; ctx.fillRect(x, fy - 20, 12, 20);
+  ctx.fillStyle = '#06141a'; ctx.fillRect(x + 1, fy - 18, 10, 8);
+  ctx.fillStyle = col;
+  if (on) { ctx.fillRect(x + 3, fy - 16, 6, 1); ctx.fillRect(x + 3, fy - 14, 4, 1); ctx.fillRect(x + 3, fy - 12, 6, 1); }
+  else if (lk) { ctx.fillRect(x + 3, fy - 17, 1, 1); ctx.fillRect(x + 7, fy - 17, 1, 1); ctx.fillRect(x + 4, fy - 15, 3, 1); ctx.fillRect(x + 3, fy - 13, 1, 1); ctx.fillRect(x + 7, fy - 13, 1, 1); }
+  else { ctx.globalAlpha = (dim ? .5 : 1) * (fr % 40 < 24 ? 1 : .35); ctx.fillRect(x + 3, fy - 16, 3, 1); ctx.fillRect(x + 3, fy - 13, 5, 1); ctx.globalAlpha = dim ? .5 : 1; }
+  ctx.fillStyle = '#4a3d6e'; ctx.fillRect(x + 1, fy - 8, 10, 3); ctx.fillStyle = col; ctx.fillRect(x + 2, fy - 7, 2, 1); ctx.fillRect(x + 6, fy - 7, 2, 1);
+  ctx.globalAlpha = 1; drawGlow(ctx, x + 6, fy - 14, 14, col, t.near ? .55 : .22);
+  if (t.near && !dim) {
+    const msg = on ? 'SAUT : TELEPORTER' : lk ? 'VERROUILLE ' + Math.ceil(t.lock / 60) + 'S' : 'SAUT : PIRATER LA BORNE';
+    drawText(ctx, msg, x + 28 + 1, fy - 37, '#12081f', 1, 'c'); drawText(ctx, msg, x + 28, fy - 38, on ? '#9ff4ff' : lk ? '#ff6a8a' : '#ffd9a0', 1, 'c');
+  }
 }
 /* --- ui --- */
 /* ===== UI : écrans, contrôles, boucle principale ===== */
@@ -2490,7 +2569,7 @@ function drawBigMap(cx, g) {
   $('btnBack').onclick = () => show('title');
   $('btnAgain').onclick = () => { audio(); start(); };
   $('btnChange').onclick = () => { openSelect(dailyMode); };
-  $('btnPause').onclick = () => { if (choosing || radio || mapOpen) return; audio(); setPause(!paused); };
+  $('btnPause').onclick = () => { if (choosing || radio || mapOpen || hack) return; audio(); setPause(!paused); };
   $('btnResume').onclick = () => setPause(false);
   $('btnQuit').onclick = () => { setPause(false); running = false; show('title'); };
   $('btnMute').onclick = () => { Sound.on = !Sound.on; $('btnMute').textContent = Sound.on ? '♪' : '×'; Sound.init(); Music.sync(); };
@@ -2555,14 +2634,60 @@ function drawBigMap(cx, g) {
     drawSheepard(rctx, radio.t, talking, Math.min(1, radio.t / 14));
   }
   /* ---------- Grande carte ---------- */
-  let mapOpen = false; const mctx = $('mapCv').getContext('2d');
-  function toggleMap(v) {
-    if (!running || !game || choosing || radio) return;
-    v = v === undefined ? !mapOpen : v; if (v === mapOpen) return; mapOpen = v; $('mapBox').hidden = !v;
-    if (v) { paused = true; Input.reset(); releaseAll(); Music.stop(); drawBigMap(mctx, game); } else { paused = false; last = 0; Input.reset(); Music.sync(); }
+  let mapOpen = false, mapSel = false, hack = null; const mctx = $('mapCv').getContext('2d');
+  function toggleMap(v, sel) {
+    if (!running || !game || choosing || radio || hack) return;
+    v = v === undefined ? !mapOpen : v; if (v === mapOpen) return; mapOpen = v; mapSel = !!(v && sel); $('mapBox').hidden = !v;
+    $('mapHint').textContent = mapSel ? 'TELEPORTATION · touche une salle avec borne active' : 'CARTE · touche pour fermer';
+    if (v) { paused = true; Input.reset(); releaseAll(); Music.stop(); drawBigMap(mctx, game, mapSel); } else { paused = false; last = 0; Input.reset(); Music.sync(); }
   }
   $('btnMap').onclick = () => { audio(); toggleMap(); };
-  $('mapBox').addEventListener('pointerdown', e => { e.preventDefault(); toggleMap(false); });
+  $('mapBox').addEventListener('pointerdown', e => {
+    e.preventDefault();
+    if (mapSel && game && game._mapRects) {
+      const r = $('mapCv').getBoundingClientRect(), x = (e.clientX - r.left) * 640 / r.width, y = (e.clientY - r.top) * 360 / r.height;
+      const h = game._mapRects.find(q => x >= q.x && x <= q.x + q.w && y >= q.y && y <= q.y + q.h);
+      const t = h && game.rooms[h.i];
+      if (t && t.tp && t.tp.active && t !== game.rooms[game.ri]) { toggleMap(false); game.teleportTo(h.i); return; }
+    }
+    toggleMap(false);
+  });
+  /* ---------- Mini-jeu de piratage (Simon) ---------- */
+  const HK = [['▲', '#ffd23a', 'ArrowUp'], ['◀', '#3dd6ff', 'ArrowLeft'], ['▶', '#ff5fa8', 'ArrowRight'], ['▼', '#6dff7a', 'ArrowDown']];
+  function openHack() {
+    const g = game; if (!g || hack || choosing || radio || mapOpen) return;
+    const n = 3 + Math.ceil(g.floor / 2), seq = []; for (let i = 0; i < n; i++) seq.push((Math.random() * 4) | 0);
+    hack = { seq, pos: 0, tries: 3, show: 0, phase: 'show', t: 0 };
+    paused = true; Input.reset(); releaseAll(); Music.stop();
+    const pad = $('hackPad'); pad.innerHTML = '';
+    HK.forEach((k, i) => { const b = document.createElement('button'); b.className = 'hk'; b.style.setProperty('--c', k[1]); b.textContent = k[0]; b.onclick = () => hackPress(i); pad.appendChild(b); });
+    $('hackBox').hidden = false; hackReplay();
+  }
+  function hackLit(i, on) { const b = $('hackPad').children[i]; if (b) b.classList.toggle('lit', on); }
+  function hackMsg(t, c) { const m = $('hackMsg'); m.textContent = t; m.style.color = c || ''; }
+  function hackReplay() {
+    const h = hack; h.phase = 'show'; h.pos = 0; hackMsg('MEMORISE LA SEQUENCE · essais ' + h.tries); $('hackProg').textContent = '';
+    h.seq.forEach((v, i) => { setTimeout(() => { if (hack !== h) return; hackLit(v, true); Sound.play('hit'); }, 600 + i * 650); setTimeout(() => { if (hack !== h) return; hackLit(v, false); }, 600 + i * 650 + 400); });
+    setTimeout(() => { if (hack !== h) return; h.phase = 'in'; hackMsg('A TOI · répète la séquence', '#9dffd6'); }, 600 + h.seq.length * 650);
+  }
+  function hackPress(i) {
+    const h = hack; if (!h || h.phase !== 'in') return;
+    hackLit(i, true); setTimeout(() => hackLit(i, false), 150);
+    if (h.seq[h.pos] === i) {
+      h.pos++; $('hackProg').textContent = '■'.repeat(h.pos) + '□'.repeat(h.seq.length - h.pos);
+      if (h.pos >= h.seq.length) { h.phase = 'done'; hackMsg('ACCES ACCORDE', '#6dff7a'); setTimeout(() => closeHack(true), 700); }
+    } else {
+      h.tries--; h.phase = 'wait';
+      if (h.tries <= 0) { hackMsg('ECHEC · BORNE VERROUILLEE', '#ff5a5a'); setTimeout(() => closeHack(false), 900); }
+      else { hackMsg('ERREUR · essais restants ' + h.tries, '#ff5a5a'); setTimeout(() => { if (hack === h) hackReplay(); }, 800); }
+    }
+  }
+  function closeHack(ok) {
+    const g = game; hack = null; $('hackBox').hidden = true; paused = false; last = 0; Input.reset(); Music.sync();
+    if (!g) return; const r = g.rooms[g.ri];
+    if (ok) g.tpActivate(); else if (r && r.tp) { r.tp.lock = 1200; g.text(g.player.cx, g.player.y - 8, 'VERROUILLE', '#ff5a5a'); }
+  }
+  $('hackX').onclick = () => { if (hack) closeHack(null); };
   function setPause(v) { paused = v; $('pauseBox').hidden = !v; Input.reset(); if (v) Music.stop(); else Music.sync(); }
   function audio() { Sound.init(); Music.sync(); }
   function renderAch() {
@@ -2594,7 +2719,7 @@ function drawBigMap(cx, g) {
     if (save) restore(save);
     lastFloor = 0;
     Input.reset(); running = true; paused = false; acc = 0; last = 0;
-    $('pauseBox').hidden = true; $('lvlBox').hidden = true; choosing = null; radio = null; mapOpen = false; $('mapBox').hidden = true; radioQ.length = 0; $('radio').hidden = true; finalOk = false; winSaid = false; lastBoss = 0; $('hud').hidden = false;
+    $('pauseBox').hidden = true; $('lvlBox').hidden = true; choosing = null; radio = null; hack = null; $('hackBox').hidden = true; mapOpen = false; mapSel = false; $('mapBox').hidden = true; radioQ.length = 0; $('radio').hidden = true; finalOk = false; winSaid = false; lastBoss = 0; $('hud').hidden = false;
     SCR.forEach(s => $(s).hidden = true);
     setShown = false;
   }
@@ -2629,6 +2754,7 @@ function drawBigMap(cx, g) {
   /* ---------- Clavier / souris ---------- */
   addEventListener('keydown', e => {
     if (radio) { if (!['F5', 'F12'].includes(e.code)) { if (['Enter', 'Space', 'KeyZ', 'KeyX', 'KeyJ', 'KeyK', 'Escape', 'ArrowUp', 'KeyW'].includes(e.code)) { e.preventDefault(); radioAdvance(); } return; } }
+    if (hack) { const hm = { ArrowUp: 0, KeyW: 0, Digit1: 0, ArrowLeft: 1, KeyA: 1, Digit2: 1, ArrowRight: 2, KeyD: 2, Digit3: 2, ArrowDown: 3, KeyS: 3, Digit4: 3 }[e.code]; if (hm !== undefined) { e.preventDefault(); hackPress(hm); } else if (e.code === 'Escape') closeHack(null); return; }
     if (mapOpen) { if (['KeyM', 'Escape', 'Enter', 'Space', 'Tab'].includes(e.code)) { e.preventDefault(); toggleMap(false); } return; }
     if (e.code === 'KeyM' && running && !paused) { e.preventDefault(); toggleMap(true); return; }
     if (choosing && ['Digit1', 'Digit2', 'Digit3'].includes(e.code)) { pickUp(+e.code.slice(5) - 1); return; }
@@ -2720,6 +2846,7 @@ function drawBigMap(cx, g) {
         if (game.floor !== lastFloor) { const first = !lastFloor; lastFloor = game.floor; saveRun(); if (first && game.floor === 1 && !game.stats.bossKills) say('intro'); say('f' + game.floor); }
         if (game.stats.bossKills > lastBoss) { lastBoss = game.stats.bossKills; if (game.state === 'play') say('boss', BOSSES[Math.min(5, game.floor - 1)].name); }
         if (game.pendingLevel > 0 && game.state === 'play' && !choosing && !radio) showLevel();
+        if (game.uiReq) { const q = game.uiReq; game.uiReq = null; if (q === 'hack') openHack(); else if (q === 'tp') toggleMap(true, true); }
         if (game.frame % 30 === 0) checkAch();
         tickAch();
         if (game.state === 'dead' && game.endT > 100) endScreen(false);
@@ -2727,7 +2854,7 @@ function drawBigMap(cx, g) {
         else if (game.state === 'win' && finalOk) endScreen(true);
       }
       renderGame(ctx, game);
-      if (mapOpen) drawBigMap(mctx, game);
+      if (mapOpen) drawBigMap(mctx, game, mapSel);
       updateHud();
     } else if (game) { renderGame(ctx, game); }
   }

@@ -102,6 +102,10 @@ class Game {
     }
     for (const r of rooms) if (r.type === 'vault') r.hidden = true;
     for (const r of rooms) this.setDoors(r, rooms);
+    { // bornes de téléportation : départ (déjà active), salle de soin avant le boss, quelques salles de combat
+      const combats = shuffle(rooms.filter(r => r.type === 'combat' && !r.tall)), nC = [1, 1, 2, 2, 2, 2][this.floor - 1];
+      for (const r of rooms.filter(r => r.type === 'start' || r.type === 'heal').concat(combats.slice(0, nC))) { const sp = this.tpSpot(r); if (sp !== null) r.tp = { x: sp, active: r.type === 'start', lock: 0, near: false }; }
+    }
     this.grid = { w: GW, h: GH };
     if (this.daily) seedRng(savedSeed + 977);
     this.rooms = rooms; this.biome = BIOMES[this.floor - 1];
@@ -198,6 +202,7 @@ class Game {
     if (from === 3) { p.x = ledge ? 282 : 26; p.y = 80 - p.h; }
     else if (from === 1) { p.x = T + 6; p.y = hy + 160 - p.h; }
     else if (from === 2) { p.x = W - T - 16; p.y = hy + 160 - p.h; }
+    else if (from === 4 && r.tp) { p.x = r.tp.x + 20; p.y = 160 - p.h; }
     this.camY = clamp(p.y + p.h / 2 - H / 2, 0, r.rows * T - H);
     p.vx = 0; p.vy = 0; Input.endFrame();
     this.staticDirty = true;
@@ -384,6 +389,35 @@ class Game {
     this.banner = 'Prodrome vaincu !'; this.bannerT = 150;
   }
   dropCoins(x, y, n) { for (let i = 0; i < n; i++) this.pickups.push({ type: 'coin', x: x - 2, y: y - 2, vx: rr(-1.4, 1.4), vy: -rr(2, 3.6), age: 0, bob: rnd() * 6 }); }
+  tpSpot(room) {
+    const t = room.tiles, ok = [];
+    for (let c = 3; c <= COLS - 6; c++) {
+      let good = true;
+      for (let cc = c; cc < c + 3 && good; cc++) { for (let r = 5; r <= 9; r++) if (t[r * COLS + cc] !== 0) good = false; const f = t[10 * COLS + cc]; if (f !== 1 && f !== 2) good = false; }
+      if (room.type === 'heal' && c * 16 + 48 > 100 && c * 16 < 215) good = false;
+      if (good) ok.push(c * 16);
+    }
+    return ok.length ? pick(ok) : null;
+  }
+  updateTP() {
+    const r = this.room, tp = r.tp, p = this.p; if (!tp) return;
+    if (tp.lock > 0) tp.lock--;
+    tp.near = !r.locked && Math.abs(p.cx - (tp.x + 14)) < 22 && p.y + p.h > 150;
+    if (tp.near && Input.jumpPressed) {
+      if (tp.active) { const n = this.rooms.filter(q => q.tp && q.tp.active && q !== r).length; if (n) this.uiReq = 'tp'; else this.text(p.cx, p.y - 8, 'AUCUNE AUTRE BORNE', '#8a7ab0'); }
+      else if (tp.lock > 0) { this.text(p.cx, p.y - 8, 'VERROUILLE', '#ff6a8a'); this.sfx('warn'); }
+      else this.uiReq = 'hack';
+    }
+  }
+  tpActivate() {
+    const tp = this.room.tp; if (!tp) return; tp.active = true; this.sfx('win'); this.fx(tp.x + 26, 146, 26, '#38e8ff', 3); this.addXp(1);
+    this.toast = { title: 'Borne piratée', desc: 'Téléportation disponible depuis cette salle.', col: '#38e8ff', t: 220 };
+  }
+  teleportTo(i) {
+    const to = this.rooms[i]; if (!to || !to.tp || !to.tp.active || i === this.ri) return false;
+    this.fx(this.p.cx, this.p.cy, 20, '#38e8ff', 3); this.loadRoom(i, 4); this.flashT = 14; this.sfx('ult'); this.fx(this.p.cx, this.p.cy, 20, '#38e8ff', 3);
+    this.banner = 'Téléportation'; this.bannerT = 70; return true;
+  }
   // point d'appui valide (sol ou plateforme) près d'une abscisse, dans l'étage où se trouve le joueur
   standSpot(prefX) {
     const r = this.room, p = this.p; if (!r.spawnPts || !r.spawnPts.length) return null;
@@ -456,6 +490,7 @@ class Game {
     const p = this.p;
     if (this.state !== 'play') { this.endT++; this.updateFx(); Input.endFrame(); return; }
     this.updatePlayer();
+    this.updateTP();
     this.updateRoomLogic();
     this.updateEnemies();
     this.updateBullets();
