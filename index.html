@@ -71,7 +71,9 @@ h1 em{display:block;font-style:normal;color:var(--cyan);text-shadow:0 0 18px var
 #overTitle{font:900 clamp(20px,6vw,32px)/1.1 var(--disp);margin:0;text-transform:uppercase}
 #overTitle.win{color:var(--lime);text-shadow:0 0 14px var(--lime)}#overTitle.lose{color:var(--pink);text-shadow:0 0 14px var(--pink)}
 #overStats{display:flex;gap:14px;flex-wrap:wrap;justify-content:center;color:var(--dim)}#overStats b{color:var(--fg)}
-#pauseBox{position:absolute;inset:0;z-index:5;background:rgba(11,7,22,.8);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;pointer-events:auto}
+#pauseBox{position:absolute;inset:0;z-index:5;background:rgba(11,7,22,.8);display:flex;flex-direction:column;align-items:center;gap:10px;pointer-events:auto;overflow-y:auto;-webkit-overflow-scrolling:touch;touch-action:pan-y;padding:12px 0}
+#pauseBox>h2{margin-top:auto}#pauseBox>.prow{margin-bottom:auto;flex-shrink:0}#pauseBox>*{flex-shrink:0}
+#pauseBox *{touch-action:pan-y}
 #pauseBox[hidden]{display:none}
 #mapBox{position:absolute;inset:0;z-index:8;background:rgba(6,3,14,.94);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;pointer-events:auto;padding:8px}
 #mapBox[hidden]{display:none}
@@ -104,7 +106,7 @@ h1 em{display:block;font-style:normal;color:var(--cyan);text-shadow:0 0 18px var
 .up{width:150px;min-height:78px;background:#1b1130;border:2px solid var(--c,#fff);color:#fff;padding:8px 8px 6px;text-align:left;font:600 11px var(--ui);box-shadow:0 0 12px -3px var(--c,#fff);touch-action:manipulation}
 .up b{display:block;font:900 12px var(--disp);color:var(--c,#fff);margin-bottom:3px}
 .up i{font-style:normal;color:#8a7aa8;float:right}
-#pStats{display:flex;gap:14px;flex-wrap:wrap;justify-content:center;max-width:min(96%,560px);font:600 11px var(--ui);color:#cdb8ee;max-height:62vh;overflow:auto}
+#pStats{display:flex;gap:14px;flex-wrap:wrap;justify-content:center;max-width:min(96%,560px);font:600 11px var(--ui);color:#cdb8ee;}
 #pStats .col{display:flex;flex-direction:column;gap:2px;min-width:150px}
 #pStats .stats{display:grid;grid-template-columns:1fr 1fr;column-gap:16px;min-width:300px}#pStats .stats h3{grid-column:1/-1}#pStats .wide{flex-basis:100%;gap:3px}#pStats h3{margin:0 0 2px;font:800 11px var(--disp);letter-spacing:.14em;color:var(--cyan)}
 #pStats .r{display:flex;justify-content:space-between;gap:10px}#pStats .r b{color:#fff}
