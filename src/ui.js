@@ -337,6 +337,12 @@
   if (canFs) {
     $('btnFs').hidden = false;
     $('btnFs').onclick = () => { try { const f = document.fullscreenElement || document.webkitFullscreenElement; const p = f ? (document.exitFullscreen || document.webkitExitFullscreen).call(document) : (fsEl.requestFullscreen || fsEl.webkitRequestFullscreen).call(fsEl); if (p && p.catch) p.catch(() => { }); } catch (e) { } };
+  /* anti-zoom iOS : double tap, pincement, gestes */
+  { let lastEnd = 0; const nz = e => { if (e.cancelable) e.preventDefault(); };
+    document.addEventListener('touchend', e => { const n = Date.now(); if (n - lastEnd < 350) nz(e); lastEnd = n; }, { passive: false });
+    document.addEventListener('dblclick', nz, { passive: false });
+    for (const ev of ['gesturestart', 'gesturechange', 'gestureend']) document.addEventListener(ev, nz, { passive: false });
+    document.addEventListener('touchmove', e => { if (e.touches && e.touches.length > 1) nz(e); }, { passive: false }); }
   }
   const touch = matchMedia('(pointer:coarse)').matches;
   document.body.classList.toggle('touch', touch);
