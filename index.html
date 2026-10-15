@@ -1376,7 +1376,7 @@ class Game {
     else if (dmg >= 1.4) this.text(e.cx, e.y - 4, String(Math.round(dmg * 10) / 10), '#fff');
     e.hp -= dmg; e.flash = 4; if (o.burn) e.burn = Math.max(e.burn, o.burn); if (o.freeze) e.freeze = o.freeze;
     const p = this.p; p.ult = Math.min(100, p.ult + dmg * 1.3 * p.st.ultRate);
-    this.sfx('hit'); this.score += dmg;
+    this.sfx('hit'); this.score += Math.round(dmg);
     if (e.hp <= 0) this.killEnemy(e);
     return true;
   }
@@ -2714,7 +2714,7 @@ function roomLoot(g, q) {
   function saveRun() {
     const g = game, p = g.p; if (!g || g.state !== 'play') return;
     lsSet('mkw-ruins-save', { hero: g.def.id, diff: g.diffId, daily: g.daily, floor: g.floor, hp: p.hp, maxhp: p.maxhp, coins: p.coins, keys: p.keys, armor: p.armor, armorMax: p.armorMax, ult: p.ult,
-      level: p.level, xp: p.xp, xpNext: p.xpNext, ups: p.ups, items: p.items.map(i => i.id), weapon: p.weapon ? p.weapon.id : null, kills: g.kills, score: g.score, stats: g.stats });
+      level: p.level, xp: p.xp, xpNext: p.xpNext, ups: p.ups, items: p.items.map(i => i.id), weapon: p.weapon ? p.weapon.id : null, kills: g.kills, score: Math.round(g.score), stats: g.stats });
   }
   function restore(s) {
     const g = game, p = g.p;
@@ -2725,7 +2725,7 @@ function roomLoot(g, q) {
     g.checkSyn(); g.toast = null;
     if (s.weapon) p.weapon = WEAPONS.find(w => w.id === s.weapon) || null;
     p.maxhp = s.maxhp; p.hp = s.hp; p.coins = s.coins; p.keys = s.keys; p.armor = s.armor == null ? 1 : s.armor; p.armorMax = s.armorMax || 3; p.ult = s.ult;
-    g.kills = s.kills; g.score = s.score; Object.assign(g.stats, s.stats, { hurtFloor: false });
+    g.kills = s.kills; g.score = Math.round(s.score); Object.assign(g.stats, s.stats, { hurtFloor: false });
     g.banner = 'Partie reprise'; g.bannerT = 120;
   }
 
@@ -2744,14 +2744,14 @@ function roomLoot(g, q) {
     if (setShown) return; setShown = true;
     const g = game; lsDel('mkw-ruins-save');
     let rec;
-    if (g.daily) { const k = 'mkw-ruins-daily-' + g.daily; rec = Math.max(lsGet(k, 0), g.score); lsSet(k, rec); }
-    else { if (g.score > best) { best = g.score; lsSet('mkw-abyss-best', best); } rec = best; }
+    if (g.daily) { const k = 'mkw-ruins-daily-' + g.daily; rec = Math.round(Math.max(lsGet(k, 0), g.score)); lsSet(k, rec); }
+    else { if (g.score > best) { best = Math.round(g.score); lsSet('mkw-abyss-best', best); } rec = best; }
     if (win) { wins[g.def.id] = (wins[g.def.id] || 0) + 1; lsSet('mkw-ruins-wins', wins); const cardEl = grid.querySelector('[data-id="' + g.def.id + '"]'); if (cardEl) cardEl.classList.add('won'); }
     checkAch();
     $('overTitle').textContent = win ? 'Éclat de victoire' : 'Mechkawaii hors service';
     $('overTitle').className = win ? 'win' : 'lose';
     $('overTxt').textContent = win ? 'Le vaisseau mère est détruit. L\'invasion est repoussée. — Gén. Sheepard' : '« Repli, pilote. Les Mechkawaii tiennent encore. Retourne au front. » — Gén. Sheepard';
-    $('overStats').innerHTML = '<span>Secteur <b>' + g.floor + '/6</b></span><span>Prodromes <b>' + g.kills + '</b></span><span>Score <b>' + g.score + '</b></span><span>' + (g.daily ? 'Record du jour' : 'Record') + ' <b>' + rec + '</b></span><span>' + DIFFS[g.diffId].name + '</span>';
+    $('overStats').innerHTML = '<span>Secteur <b>' + g.floor + '/6</b></span><span>Prodromes <b>' + g.kills + '</b></span><span>Score <b>' + Math.round(g.score) + '</b></span><span>' + (g.daily ? 'Record du jour' : 'Record') + ' <b>' + Math.round(rec) + '</b></span><span>' + DIFFS[g.diffId].name + '</span>';
     show('over'); Music.stop();
     Sound.play(win ? 'win' : 'lose');
   }
@@ -2876,7 +2876,7 @@ function roomLoot(g, q) {
   }
   // fond d'écran titre : étoiles animées légères
   requestAnimationFrame(frame);
-  $('best').textContent = best ? 'Record ' + best : '';
+  $('best').textContent = best ? 'Record ' + Math.round(best) : '';
   document.addEventListener('visibilitychange', () => { const c = Sound.ctx; if (!c) return; if (document.hidden) { c.suspend(); } else if (!paused) c.resume(); });
   const fsEl = document.documentElement, canFs = !!(fsEl.requestFullscreen || fsEl.webkitRequestFullscreen);
   if (canFs) {

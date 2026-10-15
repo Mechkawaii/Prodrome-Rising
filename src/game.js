@@ -321,7 +321,7 @@ class Game {
     else if (dmg >= 1.4) this.text(e.cx, e.y - 4, String(Math.round(dmg * 10) / 10), '#fff');
     e.hp -= dmg; e.flash = 4; if (o.burn) e.burn = Math.max(e.burn, o.burn); if (o.freeze) e.freeze = o.freeze;
     const p = this.p; p.ult = Math.min(100, p.ult + dmg * 1.3 * p.st.ultRate);
-    this.sfx('hit'); this.score += dmg;
+    this.sfx('hit'); this.score += Math.round(dmg);
     if (e.hp <= 0) this.killEnemy(e);
     return true;
   }
