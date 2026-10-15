@@ -1132,10 +1132,15 @@ class Game {
     const seq = pre === 0 ? ['heal'] : []; if (pre !== 0 && pre !== undefined && !cells[pre].tall) types[pre] = 'heal';
     seq.push('item', 'shop', rnd() < .5 ? 'challenge' : 'vault'); if (this.floor >= 2) seq.push('item'); if (this.floor >= 3) seq.push(rnd() < .5 ? 'challenge' : 'vault'); if (this.floor >= 5) seq.push('vault', 'challenge');
     const cand = [...Array(n).keys()].filter(i => i !== 0 && i !== boss && types[i] === 'combat' && !cells[i].tall);
-    const order = shuffle(cand.filter(i => deg[i] === 1)).concat(shuffle(cand.filter(i => deg[i] > 1)));
     const tallN = cells.filter(c => c.tall).length;
     seq.length = Math.max(0, Math.min(seq.length, cand.length - Math.max(0, 3 - tallN)));
-    seq.forEach((t, k) => { if (order[k] !== undefined) types[order[k]] = t; });
+    // les caches secrètes sont cachées : uniquement sur de vrais culs-de-sac (jamais sur un passage obligé)
+    let vaultN = seq.filter(t => t === 'vault').length; const rest = seq.filter(t => t !== 'vault');
+    const leafPool = shuffle(cand.filter(i => deg[i] === 1)), used = new Set();
+    for (let k = 0; k < vaultN && leafPool.length; k++) { const i = leafPool.shift(); types[i] = 'vault'; used.add(i); vaultN--; }
+    for (let k = 0; k < vaultN; k++) rest.push('challenge');
+    const order = leafPool.concat(shuffle(cand.filter(i => deg[i] > 1)));
+    rest.forEach((t, k) => { if (order[k] !== undefined) types[order[k]] = t; });
     const rooms = cells.map((c, i) => { const r = c.tall ? this.makeTallRoom(i, dist[i]) : this.makeRoom(types[i], i, dist[i]); r.gx = c.x; r.gy = c.y; return r; });
     for (const l of links) {
       const A = rooms[l.a], B = rooms[l.b], sa = cells[l.a].tall ? l.y - cells[l.a].y : 0, sb = cells[l.b].tall ? l.y - cells[l.b].y : 0;
