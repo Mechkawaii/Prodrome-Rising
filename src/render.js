@@ -413,40 +413,40 @@ function drawHUD(ctx, g) {
 function drawBigMap(cx, g) {
   const CW = 480, CH = 270, gw = g.grid.w, gh = g.grid.h;
   cx.imageSmoothingEnabled = false; cx.fillStyle = '#0d0818'; cx.fillRect(0, 0, CW, CH);
-  cx.fillStyle = '#4a3a70'; for (let i = 0; i < 80; i++) cx.fillRect((i * 97) % CW, (i * 53) % CH, 1, 1);
-  const cw = Math.min(54, Math.floor((CW - 40) / gw)), chh = Math.min(48, Math.floor((CH - 70) / gh));
-  const ox = Math.round((CW - gw * cw) / 2), oy = 34;
+  cx.fillStyle = '#2a1f45'; for (let i = 0; i < 90; i++) cx.fillRect((i * 97) % CW, (i * 53) % CH, 1, 1);
+  const GX = 14, GY = 12;
+  const bw = Math.floor(Math.min(440 / gw - GX, ((CH - 82) / gh - GY) / .62)), bh = Math.round(bw * .62);
+  const cw = bw + GX, chh = bh + GY, ox = Math.round((CW - (gw * cw - GX)) / 2), oy = 32 + Math.round((CH - 82 - (gh * chh - GY)) / 2);
   const known = i => { const q = g.rooms[i]; if (q.visited) return true; if (q.hidden) return false; for (const k in q.exits) { const o = q.exits[k]; if (o != null && g.rooms[o].visited) return true; } return false; };
   const NAME = { start: 'DEPART', combat: 'COMBAT', item: 'OBJET', heal: 'SOIN', boss: 'BOSS', shop: 'ATELIER', vault: 'CACHE', challenge: 'DEFI' };
   const COL = { boss: '#ff3a6a', item: '#ffd23a', heal: '#ff5cc8', shop: '#ffe38a', vault: '#8ee8ff', challenge: '#ff9a4a', start: '#8a7ab0' };
   drawText(cx, 'CARTE - ' + g.biome.name.toUpperCase(), CW / 2, 10, '#ffffff', 2, 'c');
   const pos = q => [ox + q.gx * cw, oy + q.gy * chh];
-  const bw = cw - 14, bh = chh - 12;
-  // liaisons
-  cx.fillStyle = '#7a6a98';
+  const dot = (x, y) => { cx.fillStyle = '#0d0818'; cx.fillRect(x - 3, y - 3, 7, 7); cx.fillStyle = '#38b6ff'; cx.fillRect(x - 2, y - 2, 5, 5); cx.fillRect(x - 3, y - 1, 7, 3); cx.fillRect(x - 1, y - 3, 3, 7); cx.fillStyle = '#bfe8ff'; cx.fillRect(x - 1, y - 1, 1, 1); };
+  // liaisons (portes gauche/droite) : trait + points bleus aux deux passages
   for (const q of g.rooms) {
     if (!known(q.i)) continue; const [x, y] = pos(q);
-    const th = q.rows > ROWS ? chh + bh : bh;
-    for (const [k, dy] of [['R', 0], ['R2', chh]]) { const o = q.exits[k]; if (o != null && known(o)) cx.fillRect(x + bw, y + bh / 2 + dy - 1, 14, 3); }
-    if (q.exits.D != null && known(q.exits.D)) cx.fillRect(x + bw / 2 - 1, y + bh, 3, 12);
+    for (const [k, dy] of [['R', 0], ['R2', chh]]) {
+      const o = q.exits[k]; if (o == null || !known(o)) continue; const r2 = g.rooms[o], [x2] = pos(r2);
+      const ly = y + dy + bh / 2, slot = (q.gy + (dy ? 1 : 0)) - r2.gy, ly2 = pos(r2)[1] + slot * chh + bh / 2;
+      cx.fillStyle = '#7a6a98'; cx.fillRect(x + bw, Math.round(ly) - 1, x2 - x - bw, 3);
+      dot(x + bw, Math.round(ly)); dot(x2, Math.round(ly2));
+    }
   }
   for (const q of g.rooms) {
     if (!known(q.i)) continue; const [x, y] = pos(q), tall = q.rows > ROWS, th = tall ? chh + bh : bh;
     const base = COL[q.type] || (q.cleared ? '#5a4a80' : '#c04060');
     cx.fillStyle = '#12081f'; cx.fillRect(x - 2, y - 2, bw + 4, th + 4);
     cx.globalAlpha = q.visited ? 1 : .5; cx.fillStyle = base; cx.fillRect(x, y, bw, th); cx.globalAlpha = 1;
-    cx.fillStyle = 'rgba(0,0,0,.3)'; cx.fillRect(x, y + th - 3, bw, 3);
-    if (tall) { // paliers du puits
-      cx.fillStyle = 'rgba(255,255,255,.25)'; for (let k = 1; k < 4; k++) cx.fillRect(x + 6 + (k % 2) * (bw - 24), y + Math.round(th * k / 4), 18, 2);
-      cx.fillStyle = '#12081f'; cx.fillRect(x, y + bh, bw, chh - bh + 1);
-      cx.fillStyle = base; cx.globalAlpha = q.visited ? 1 : .5; cx.fillRect(x, y + bh + 4, bw, th - bh - 4); cx.fillRect(x, y, bw, bh); cx.globalAlpha = 1;
-    }
-    drawText(cx, (tall ? 'VERTICAL' : (NAME[q.type] || '')), x + bw / 2, y + 3, '#0d0818', 1, 'c');
+    cx.fillStyle = 'rgba(0,0,0,.28)'; cx.fillRect(x, y + th - 3, bw, 3);
+    if (tall) { cx.fillStyle = 'rgba(255,255,255,.28)'; for (let k = 1; k < 4; k++) cx.fillRect(x + 4 + (k % 2) * (bw - 18), y + Math.round(th * k / 4), 14, 2); cx.fillStyle = 'rgba(0,0,0,.35)'; cx.fillRect(x, y + bh, bw, 2); }
+    drawText(cx, tall ? 'VERTICAL' : (NAME[q.type] || ''), x + bw / 2, y + 3, '#0d0818', 1, 'c');
     if (q.cleared && q.type === 'combat') drawText(cx, 'OK', x + bw / 2, y + bh - 9, '#0d0818', 1, 'c');
-    if (q === g.room) { const t = g.frame % 40 < 28; if (t) { cx.fillStyle = '#fff'; const hy = tall ? Math.min(th - 8, Math.max(0, Math.round(g.p.cy / (q.rows * T) * th) - 3)) : bh / 2 - 3; cx.fillRect(x + bw / 2 - 3, y + hy, 7, 7); cx.fillStyle = '#12081f'; cx.fillRect(x + bw / 2 - 1, y + hy + 2, 3, 3); } }
+    if (q === g.room) { if (g.frame % 40 < 28) { cx.fillStyle = '#fff'; const hy = tall ? Math.min(th - 8, Math.max(0, Math.round(g.p.cy / (q.rows * T) * th) - 3)) : bh / 2 - 1; cx.fillRect(x + bw / 2 - 3, y + hy, 7, 7); cx.fillStyle = '#12081f'; cx.fillRect(x + bw / 2 - 1, y + hy + 2, 3, 3); } }
   }
   // légende
-  let lx = 12; const ly = CH - 22;
+  let lx = 12; const ly = CH - 30;
   for (const [k, c] of [['DEPART', '#8a7ab0'], ['COMBAT', '#c04060'], ['OBJET', '#ffd23a'], ['SOIN', '#ff5cc8'], ['ATELIER', '#ffe38a'], ['CACHE', '#8ee8ff'], ['DEFI', '#ff9a4a'], ['BOSS', '#ff3a6a']]) { cx.fillStyle = c; cx.fillRect(lx, ly, 6, 6); drawText(cx, k, lx + 9, ly, '#cdb8ee', 1); lx += 9 + textW(k) + 9; }
-  drawText(cx, 'SALLE VERTICALE = DEUX SALLES EMPILEES', CW / 2, CH - 10, '#9a8abb', 1, 'c');
+  dot(18, CH - 12); drawText(cx, 'PASSAGE VERS UNE AUTRE SALLE', 28, CH - 15, '#9a8abb', 1);
+  drawText(cx, 'SALLE VERTICALE = PLUSIEURS ETAGES', CW - 12, CH - 15, '#9a8abb', 1, 'r');
 }

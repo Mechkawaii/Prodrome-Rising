@@ -46,60 +46,54 @@ class Game {
     this.floor++; this.stats.hurtFloor = false;
     const savedSeed = getSeed(); if (this.daily) seedRng(this.daily * 7919 + this.floor * 104729);
     // ---- carte : cellules sur une grille, arbre couvrant + boucles ----
-    const GW = [5, 6, 6, 6, 7, 7][this.floor - 1], GH = [2, 2, 3, 3, 3, 3][this.floor - 1], target = [9, 11, 13, 13, 15, 15][this.floor - 1];
-    const key = (x, y) => x + y * 10;
-    const cells = [{ x: 0, y: ri(0, GH - 1) }], at = new Map([[key(cells[0].x, cells[0].y), 0]]);
-    let edges = [], guard = 0; const tallWant = [1, 1, 2, 2, 3, 3][this.floor - 1], tallPairs = [], tallLock = new Set();
-    while (cells.length < target && guard++ < 800) {
-      const ci = ri(0, cells.length - 1), c = cells[ci], d = pick([[1, 0], [1, 0], [-1, 0], [0, 1], [0, 1], [0, -1]]);
-      const nx = c.x + d[0], ny = c.y + d[1];
-      if (nx < 0 || ny < 0 || nx >= GW || ny >= GH || at.has(key(nx, ny))) continue;
-      if (d[0] === 0 && tallLock.has(ci)) continue;
-      if (d[1] === 1 && ci !== 0 && tallPairs.length < tallWant && rnd() < .9) { tallPairs.push([ci, cells.length]); tallLock.add(ci); tallLock.add(cells.length); }
-      at.set(key(nx, ny), cells.length); cells.push({ x: nx, y: ny }); edges.push([ci, cells.length - 1]);
+    const GW = [6, 7, 7, 7, 8, 8][this.floor - 1], GH = [2, 2, 3, 3, 3, 3][this.floor - 1], target = [9, 11, 13, 13, 15, 15][this.floor - 1], tallWant = [1, 1, 2, 2, 3, 3][this.floor - 1];
+    const key = (x, y) => x + y * 20;
+    // nœuds : une salle normale occupe 1 case, une salle verticale en occupe 2 (x,y) et (x,y+1).
+    // Toutes les liaisons sont latérales (portes gauche/droite) : on ne change d'étage que dans une salle verticale.
+    const cells = [{ x: 0, y: ri(0, GH - 1), tall: false }], at = new Map([[key(cells[0].x, cells[0].y), 0]]);
+    let links = [], guard = 0, tallLeft = tallWant;
+    const rowsOf = c => c.tall ? [c.y, c.y + 1] : [c.y];
+    while (cells.length < target && guard++ < 1500) {
+      const ci = ri(0, cells.length - 1), c = cells[ci], side = rnd() < .62 ? 1 : -1, row = pick(rowsOf(c)), nx = c.x + side;
+      if (nx < 0 || nx >= GW || at.has(key(nx, row))) continue;
+      let tall = false, ny = row;
+      if (tallLeft > 0 && rnd() < .45) {
+        const opts = []; if (row + 1 < GH && !at.has(key(nx, row + 1))) opts.push(row); if (row - 1 >= 0 && !at.has(key(nx, row - 1))) opts.push(row - 1);
+        if (opts.length) { tall = true; ny = pick(opts); tallLeft--; }
+      }
+      const idx = cells.length; cells.push({ x: nx, y: ny, tall }); at.set(key(nx, ny), idx); if (tall) at.set(key(nx, ny + 1), idx);
+      links.push(side === 1 ? { a: ci, b: idx, y: row } : { a: idx, b: ci, y: row });
     }
-    const n = cells.length, tree = edges.length, tdeg = Array(n).fill(0);
-    for (const e of edges) { tdeg[e[0]]++; tdeg[e[1]]++; }
-    const has = (a, b) => edges.some(e => (e[0] === a && e[1] === b) || (e[0] === b && e[1] === a));
-    for (let a = 0; a < n; a++) for (const d of [[1, 0], [0, 1]]) { const b = at.get(key(cells[a].x + d[0], cells[a].y + d[1])); if (b !== undefined && !has(a, b) && !(d[1] === 1 && (tallLock.has(a) || tallLock.has(b))) && rnd() < .4) edges.push([a, b]); }
-    const bfs = () => { const dist = Array(n).fill(-1); dist[0] = 0; const q = [0]; while (q.length) { const u = q.shift(); for (const e of edges) { const v = e[0] === u ? e[1] : e[1] === u ? e[0] : -1; if (v >= 0 && dist[v] < 0) { dist[v] = dist[u] + 1; q.push(v); } } } return dist; };
+    const n = cells.length, tree = links.length, tdeg = Array(n).fill(0);
+    for (const l of links) { tdeg[l.a]++; tdeg[l.b]++; }
+    // boucles : cases voisines de deux salles différentes
+    for (let a = 0; a < n; a++) for (const r of rowsOf(cells[a])) {
+      const b = at.get(key(cells[a].x + 1, r));
+      if (b !== undefined && b !== a && !links.some(l => l.a === a && l.b === b && l.y === r) && rnd() < .35) links.push({ a, b, y: r });
+    }
+    const bfs = () => { const dist = Array(n).fill(-1); dist[0] = 0; const q = [0]; while (q.length) { const u = q.shift(); for (const l of links) { const v = l.a === u ? l.b : l.b === u ? l.a : -1; if (v >= 0 && dist[v] < 0) { dist[v] = dist[u] + 1; q.push(v); } } } return dist; };
     let dist = bfs();
-    let leaves = [...Array(n).keys()].filter(i => i !== 0 && tdeg[i] === 1 && !tallLock.has(i)); if (!leaves.length) leaves = [...Array(n).keys()].filter(i => i !== 0 && tdeg[i] === 1); const maxD = Math.max(...leaves.map(i => dist[i]));
-    const boss = pick(leaves.filter(i => dist[i] === maxD));
-    edges = edges.filter((e, i) => i < tree || (e[0] !== boss && e[1] !== boss));
+    const nb = i => links.filter(l => l.a === i || l.b === i).map(l => l.a === i ? l.b : l.a);
+    let leaves = [...Array(n).keys()].filter(i => i !== 0 && tdeg[i] === 1 && !cells[i].tall && nb(i).every(o => !cells[o].tall));
+    if (!leaves.length) leaves = [...Array(n).keys()].filter(i => i !== 0 && tdeg[i] === 1 && !cells[i].tall);
+    if (!leaves.length) leaves = [...Array(n).keys()].filter(i => i !== 0 && !cells[i].tall);
+    const maxD = Math.max(...leaves.map(i => dist[i])), boss = pick(leaves.filter(i => dist[i] === maxD));
+    links = links.filter((l, i) => i < tree || (l.a !== boss && l.b !== boss));
     dist = bfs();
-    const deg = Array(n).fill(0); for (const e of edges) { deg[e[0]]++; deg[e[1]]++; }
+    const deg = Array(n).fill(0); for (const l of links) { deg[l.a]++; deg[l.b]++; }
     const types = Array(n).fill('combat'); types[0] = 'start'; types[boss] = 'boss';
-    const pre = edges.map(e => e[0] === boss ? e[1] : e[1] === boss ? e[0] : -1).find(v => v >= 0);
-    const seq = pre === 0 ? ['heal'] : []; if (pre !== 0) types[pre] = 'heal';
+    const pre = nb(boss).find(v => v >= 0);
+    const seq = pre === 0 ? ['heal'] : []; if (pre !== 0 && pre !== undefined && !cells[pre].tall) types[pre] = 'heal';
     seq.push('item', 'shop', rnd() < .5 ? 'challenge' : 'vault'); if (this.floor >= 2) seq.push('item'); if (this.floor >= 3) seq.push(rnd() < .5 ? 'challenge' : 'vault'); if (this.floor >= 5) seq.push('vault', 'challenge');
-    const cand = [...Array(n).keys()].filter(i => i !== 0 && i !== boss && types[i] === 'combat' && !tallLock.has(i));
+    const cand = [...Array(n).keys()].filter(i => i !== 0 && i !== boss && types[i] === 'combat' && !cells[i].tall);
     const order = shuffle(cand.filter(i => deg[i] === 1)).concat(shuffle(cand.filter(i => deg[i] > 1)));
     seq.forEach((t, k) => { if (order[k] !== undefined) types[order[k]] = t; });
-    const rooms = cells.map((c, i) => { const r = this.makeRoom(types[i], i, dist[i]); r.gx = c.x; r.gy = c.y; return r; });
-    for (const [a, b] of edges) {
-      const dx = cells[b].x - cells[a].x, dy = cells[b].y - cells[a].y;
-      if (dx === 1) { rooms[a].exits.R = b; rooms[b].exits.L = a; } else if (dx === -1) { rooms[a].exits.L = b; rooms[b].exits.R = a; }
-      else if (dy === -1) { rooms[a].exits.U = b; rooms[b].exits.D = a; } else { rooms[a].exits.D = b; rooms[b].exits.U = a; }
+    const rooms = cells.map((c, i) => { const r = c.tall ? this.makeTallRoom(i, dist[i]) : this.makeRoom(types[i], i, dist[i]); r.gx = c.x; r.gy = c.y; return r; });
+    for (const l of links) {
+      const A = rooms[l.a], B = rooms[l.b], sa = cells[l.a].tall ? l.y - cells[l.a].y : 0, sb = cells[l.b].tall ? l.y - cells[l.b].y : 0;
+      A.exits[sa ? 'R2' : 'R'] = l.b; B.exits[sb ? 'L2' : 'L'] = l.a;
     }
     for (const r of rooms) if (r.type === 'vault') r.hidden = true;
-    // salles verticales : on fusionne deux salles de combat empilées
-    {
-      let want = [1, 1, 2, 2, 3, 3][this.floor - 1], tries = 0;
-      while (want > 0 && tries++ < 30) {
-        const cand = rooms.filter(a => a && a.type === 'combat' && a.exits.D !== null && a.exits.U === null && !a.tall && rooms[a.exits.D] && rooms[a.exits.D].type === 'combat' && !rooms[a.exits.D].tall && rooms[a.exits.D].exits.D === null);
-        if (!cand.length) break;
-        const a = pick(cand), b = rooms[a.exits.D], T2 = this.makeTallRoom(a.i, a.depth);
-        T2.gx = a.gx; T2.gy = a.gy;
-        T2.exits.L = a.exits.L; T2.exits.R = a.exits.R; T2.exits.L2 = b.exits.L; T2.exits.R2 = b.exits.R;
-        for (const o of rooms) { if (!o || o === a || o === b) continue; for (const k in o.exits) if (o.exits[k] === b.i) o.exits[k] = a.i; }
-        rooms[a.i] = T2; rooms[b.i] = null; want--;
-      }
-      const map = new Map(); let ni = 0; rooms.forEach((o, i) => { if (o) map.set(i, ni++); });
-      const out = rooms.filter(Boolean);
-      for (const o of out) { for (const k in o.exits) if (o.exits[k] !== null) o.exits[k] = map.get(o.exits[k]); o.i = map.get(o.i); }
-      rooms.length = 0; out.forEach(o => rooms.push(o));
-    }
     for (const r of rooms) this.setDoors(r, rooms);
     this.grid = { w: GW, h: GH };
     if (this.daily) seedRng(savedSeed + 977);
@@ -459,7 +453,7 @@ class Game {
         const tall = r.rows > ROWS, hh = tall && p.cy >= ROWS * T ? 1 : 0, high = !tall && p.cy < 112;
         const k = tall ? (side === 0 ? (hh ? 'L2' : 'L') : (hh ? 'R2' : 'R')) : side === 0 ? (high ? 'D' : 'L') : (high ? 'U' : 'R'), to = r.exits[k];
         if (to !== null && to !== undefined) {
-          const dest = this.rooms[to], half = dest.rows > ROWS ? (r.gy - dest.gy >= 1 ? 1 : 0) : 0;
+          const dest = this.rooms[to], half = dest.rows > ROWS ? clamp(r.gy + hh - dest.gy, 0, 1) : 0;
           if (high) this.loadRoom(to, 3, side === 1 ? 0 : 1); else this.loadRoom(to, side === 1 ? 1 : 2, 0, half);
         }
         else { p.x = side ? W - p.w - 2 : 2; p.vx = 0; }
