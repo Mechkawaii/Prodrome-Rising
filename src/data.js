@@ -18,10 +18,10 @@ const HEROES = [
   },
   {
     id: 'banado', name: 'Banado', code: 'MKW_UZUME', cls: 'Technicien', col: '#38a8ff', hp: 4, cd: 13,
-    classTxt: 'Armure auto-réparée : +1 point d\'armure toutes les 9 s, jusqu\'au maximum.',
+    classTxt: 'Un seul bouclier (il revend le reste) : il se répare tout seul en 9 s après avoir été brisé.',
     ultName: 'Cœur mécanique', ultTxt: 'Restaure 2 PV et +2 armure.',
     motto: '« Dévouement et sacrifice. »',
-    init(p) { p.armor = 2; p.armorMax = 4; p.autoShieldT = 0; },
+    armorCap: 1, init(p) { p.armor = 1; p.armorMax = 1; p.autoShieldT = 0; },
     fire(g, p, a) { g.shootP(p, a.ang, { speed: 3.6, dmg: 1, color: '#38a8ff', life: 70 }); g.sfx('shoot'); },
     update(g, p) { if (p.armor < p.armorMax) { if (++p.autoShieldT > 540) { p.autoShieldT = 0; p.armor++; g.text(p.cx, p.y - 8, '+ARMURE', '#38a8ff'); g.sfx('shield'); } } else p.autoShieldT = 0; },
     ult(g, p) { g.heal(p, 2); p.armor = Math.min(p.armorMax, p.armor + 2); g.fx(p.cx, p.cy, 24, '#38a8ff', 2); g.sfx('ult'); }

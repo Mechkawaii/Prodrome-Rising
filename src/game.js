@@ -222,7 +222,7 @@ class Game {
     if (r.type === 'boss' && !r.cleared && r.bossTimer == null) r.bossTimer = 60;
   }
   setupItemRoom(r, boss) {
-    const owned = new Set(this.p.items.map(i => i.id));
+    const owned = new Set(this.p.items.map(i => i.id).concat(this.def.armorCap ? ['blindage', 'bouclier'] : []));
     const pool = shuffle(ITEMS.filter(i => !owned.has(i.id)).concat(WEAPONS.filter(w => this.p.weapon !== w && rnd() < .5)));
     const xs = [96, 152, 208];
     for (let k = 0; k < 3 && k < pool.length; k++) this.pickups.push({ type: 'item', item: pool[k], x: xs[k], y: 160 - 14, group: boss ? 'b' : 'i' + r.i, bob: rnd() * 6 });
@@ -233,7 +233,7 @@ class Game {
     if (this.p.hp < this.p.maxhp) this.pickups.push({ type: 'heart', x: 154, y: 160 - 8, bob: 0 });
   }
   setupShop(r) {
-    const owned = new Set(this.p.items.map(i => i.id)), pool = shuffle(ITEMS.filter(i => !owned.has(i.id)));
+    const owned = new Set(this.p.items.map(i => i.id).concat(this.def.armorCap ? ['blindage', 'bouclier'] : [])), pool = shuffle(ITEMS.filter(i => !owned.has(i.id)));
     const wp = shuffle(WEAPONS.filter(w => this.p.weapon !== w))[0];
     const st = [];
     for (let k = 0; k < 2 && k < pool.length; k++) st.push({ kind: 'item', item: pool[k], price: ri(9, 15) });
@@ -439,7 +439,7 @@ class Game {
       else if (k < .72) this.pickups.push({ type: 'shield', x: dx - 4, y: dy, vy: -1, bob: 0 });
       if (rnd() < .10) this.pickups.push({ type: 'key', x: dx + 6, y: dy, vy: -1, bob: 0 });
       if (rnd() < .20) { const q = this.standSpot(ri(60, 250)); if (q) this.pickups.push({ type: 'crate', x: q[0], y: q[1], bob: rnd() * 6 }); }
-      if (rnd() < .3) { const owned = new Set(p.items.map(o => o.id)), pl = ITEMS.filter(o => !owned.has(o.id)); const q = this.standSpot(W / 2 - 40); if (pl.length && q) this.pickups.push({ type: 'item', item: pick(pl), x: q[0], y: q[1], group: 'f' + r.i, bob: 0 }); }
+      if (rnd() < .3) { const owned = new Set(p.items.map(o => o.id).concat(this.def.armorCap ? ['blindage', 'bouclier'] : [])), pl = ITEMS.filter(o => !owned.has(o.id)); const q = this.standSpot(W / 2 - 40); if (pl.length && q) this.pickups.push({ type: 'item', item: pick(pl), x: q[0], y: q[1], group: 'f' + r.i, bob: 0 }); }
       if (r.depth % 2 === 1 || rnd() < .25) this.pickups.push({ type: 'cell', x: clamp(dx + 20, 24, W - 32), y: dy, vy: -1, bob: 0 });
     } else if (r.type === 'challenge') {
       this.dropCoins(W / 2, 80, 3); this.setupItemRoom(r, false); this.banner = 'Défi réussi !'; this.bannerT = 120;
@@ -461,14 +461,14 @@ class Game {
     }
   }
   levelChoices() {
-    const p = this.p, pool = shuffle(UPGRADES.filter(u => !u.ok || u.ok(p)));
+    const p = this.p, pool = shuffle(UPGRADES.filter(u => (!u.ok || u.ok(p)) && !(this.def.armorCap && u.id === 'u_arm')));
     return pool.slice(0, 3);
   }
   applyUp(u) { const p = this.p; p.ups.push(u.id); u.apply(p, this); this.pendingLevel = Math.max(0, this.pendingLevel - 1); this.sfx('pick'); this.fx(p.cx, p.cy, 18, u.col, 2.5); this.toast = { title: u.name, desc: u.desc, col: u.col, t: 160 }; }
   openCrate(k) {
     const p = this.p, x = k.x + 4, y = k.y;
     this.fx(x, y, 24, '#ffd23a', 3); this.sfx('pick'); this.shake(3); this.stats.crates = (this.stats.crates || 0) + 1;
-    const owned = new Set(p.items.map(o => o.id)), pl = ITEMS.filter(o => !owned.has(o.id)), r = rnd();
+    const owned = new Set(p.items.map(o => o.id).concat(this.def.armorCap ? ['blindage', 'bouclier'] : [])), pl = ITEMS.filter(o => !owned.has(o.id)), r = rnd();
     if (r < .38 && pl.length) { const it = pick(pl); this.pickups.push({ type: 'item', item: it, x: x - 4, y: 160 - 14, group: 'c' + this.frame, bob: 0 }); this.text(x, y - 10, 'OBJET !', '#ffd23a'); }
     else if (r < .5) { const ws = WEAPONS.filter(w => p.weapon !== w); if (ws.length) { this.pickups.push({ type: 'item', item: pick(ws), x: x - 4, y: 160 - 14, group: 'c' + this.frame, bob: 0 }); this.text(x, y - 10, 'ARME !', '#ffd23a'); } else this.dropCoins(x, y, 10); }
     else if (r < .68) { this.dropCoins(x, y, ri(3, 5)); this.text(x, y - 10, 'BOULONS !', '#ffd23a'); }
@@ -482,7 +482,7 @@ class Game {
     this.checkSyn();
   }
   checkSyn() {
-    const have = new Set(this.p.items.map(i => i.id));
+    const have = new Set(this.p.items.map(i => i.id).concat(this.def.armorCap ? ['blindage', 'bouclier'] : []));
     for (const s of SYNERGIES) if (!this.syn.has(s.id) && s.req.every(r => have.has(r))) {
       this.syn.add(s.id); s.apply(this.p, this); this.stats.syn++;
       this.toast = { title: 'Synergie : ' + s.name, desc: s.desc, col: '#ffe38a', t: 280 }; this.sfx('ult'); this.fx(this.p.cx, this.p.cy, 26, '#ffe38a', 3);
@@ -558,6 +558,7 @@ class Game {
     if (Input.ultPressed) {
       if (p.ult >= 100) { p.ult = 0; def.ult(this, p); this.shake(4); } else this.text(p.cx, p.y - 8, 'CHARGE ' + Math.floor(p.ult) + '%', '#ffe38a');
     }
+    if (def.armorCap && p.armorMax !== def.armorCap) { p.armorMax = def.armorCap; p.armor = Math.min(p.armor, p.armorMax); }
     if (def.update) def.update(this, p);
     // drone & gaz
     if (p.st.drone) {
