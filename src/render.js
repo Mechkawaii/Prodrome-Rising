@@ -362,11 +362,7 @@ function drawHUD(ctx, g) {
   let y = 30; ctx.fillStyle = 'rgba(13,8,24,.6)'; ctx.fillRect(3, y - 2, 70, 11);
   iconS(ctx, 'key', 5, y, '#e8eef0', 1); drawText(ctx, 'x' + p.keys, 14, y + 1, '#e8f6ff');
   { const cx = 36; ctx.fillStyle = '#ffd23a'; ctx.fillRect(cx, y + 1, 5, 3); ctx.fillRect(cx + 1, y, 3, 5); ctx.fillStyle = '#8a5a10'; ctx.fillRect(cx + 2, y + 2, 1, 1); drawText(ctx, 'x' + p.coins, cx + 8, y + 1, '#ffe38a'); }
-  for (let i = 0; i < p.dashMax; i++) { ctx.fillStyle = i < p.dash ? '#ffffff' : '#3a2552'; ctx.fillRect(3 + i * 8, 52, 6, 3); }
-  { const rk = RANKS.filter(q => q[0] <= p.level).pop();
-    drawText(ctx, 'NV ' + p.level, 3, 58, rk[2]); drawText(ctx, rk[1], 26, 58, shade(rk[2], -.1));
-    ctx.fillStyle = '#12081f'; ctx.fillRect(3, 65, 54, 4); ctx.fillStyle = '#2a1a44'; ctx.fillRect(4, 66, 52, 2); ctx.fillStyle = rk[2]; ctx.fillRect(4, 66, Math.round(52 * p.xp / p.xpNext), 2); }
-  if (p.weapon) drawText(ctx, p.weapon.name, 3, 72, p.weapon.col);
+  for (let i = 0; i < p.dashMax; i++) { ctx.fillStyle = '#12081f'; ctx.fillRect(3 + i * 9, 51, 8, 5); ctx.fillStyle = i < p.dash ? '#ffffff' : '#3a2552'; ctx.fillRect(4 + i * 9, 52, 6, 3); }
   // barre de coup unique
   const full = p.ult >= 100, bw = 62; y = 41;
   ctx.fillStyle = '#12081f'; ctx.fillRect(3, y, bw + 2, 7);

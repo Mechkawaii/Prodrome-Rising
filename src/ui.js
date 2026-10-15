@@ -98,7 +98,6 @@
   }
   function openOpts(from) { optFrom = from; syncOpts(); $('optScr').hidden = false; if (from === 'title') SCR.forEach(s => { if (s !== 'optScr') $(s).hidden = true; }); }
   $('btnOpt').onclick = () => openOpts('title');
-  $('btnPOpt').onclick = () => openOpts('pause');
   $('btnOptBack').onclick = () => { $('optScr').hidden = true; if (optFrom === 'title') show('title'); };
   $('oMus').oninput = e => { Opts.mus = e.target.value / 100; $('vMus').textContent = e.target.value + ' %'; Sound.init(); Music.sync(); Music.setVol(); saveOpts(); };
   $('oSfx').oninput = e => { Opts.sfx = e.target.value / 100; $('vSfx').textContent = e.target.value + ' %'; saveOpts(); };
@@ -120,10 +119,8 @@
   $('btnBack').onclick = () => show('title');
   $('btnAgain').onclick = () => { audio(); start(); };
   $('btnChange').onclick = () => { openSelect(dailyMode); };
-  $('btnPause').onclick = () => { if (choosing || radio || mapOpen || hack || inv) return; audio(); setPause(!paused); };
-  $('btnResume').onclick = () => setPause(false);
-  $('btnQuit').onclick = () => { setPause(false); running = false; show('title'); };
-  $('btnMute').onclick = () => { Sound.on = !Sound.on; $('btnMute').textContent = Sound.on ? '♪' : '×'; Sound.init(); Music.sync(); };
+  $('btnPause').onclick = () => { if (inv && inv.pause) { closeInv(); return; } if (choosing || radio || mapOpen || hack || inv) return; audio(); setPause(true); };
+      $('btnMute').onclick = () => { Sound.on = !Sound.on; $('btnMute').textContent = Sound.on ? '♪' : '×'; Sound.init(); Music.sync(); };
   let choosing = null;
   function showLevel() {
     const g = game; if (!g || choosing) return;
@@ -240,14 +237,14 @@
   }
   /* ---------- Inventaire ---------- */
   const catName = { def: 'BLINDAGE', atk: 'ATTAQUE', mod: 'MODULES', ano: 'ANOMALIES' };
-  function openInv(req) {
+  function openInv(req, pause) {
     if (!running || !game || choosing || radio || hack || mapOpen || inv) return false;
-    inv = { req, sel: null, fromPause: !$('pauseBox').hidden }; paused = true; Input.reset(); releaseAll(); $('invBox').hidden = false; renderInv(); return true;
+    inv = { req, sel: null, pause: !!pause }; paused = true; Input.reset(); releaseAll(); $('invBox').hidden = false; renderInv(); return true;
   }
   function closeInv() {
-    if (!inv) return; const req = inv.req, fp = inv.fromPause; inv = null; $('invBox').hidden = true;
+    if (!inv) return; const req = inv.req; inv = null; $('invBox').hidden = true;
     if (req && game && game.uiReq === req) game.uiReq = null;
-    if (!fp) { paused = false; last = 0; Input.reset(); Music.sync(); } else renderPauseStats();
+    paused = !!radio; last = 0; Input.reset(); Music.sync();
   }
   function chips(it) { const ks = it.any ? ['*'] : it.cat2 ? [it.cat, it.cat2] : [it.cat]; return ks.map(k => '<i class="chip" style="--c:' + (k === '*' ? '#e8eef0' : SLOTCOL[k]) + '">' + (k === '*' ? 'INCOLORE' : catName[k]) + '</i>').join(''); }
   function drawPortrait() {
@@ -260,10 +257,9 @@
   }
   function renderInv() {
     const g = game, p = g.p, d = g.def, req = inv.req, st = p.st, nm = req ? req.it : null, nkeys = nm ? g.modKeys(nm) : null;
-    drawPortrait();
+    drawPortrait(); renderStats();
     const pc = x => Math.round(x * 100) + ' %';
-    $('invInfo').innerHTML = '<b class="nm" style="color:' + d.col + '">' + d.name.toUpperCase() + '</b><span class="cl">' + d.cls + ' · Niv. ' + p.level + '</span><span class="tx">' + d.classTxt + '</span><span class="tx" style="color:#ffd23a">★ ' + d.ultName + ' — <u>' + d.ultTxt + '</u></span>' +
-      '<span class="st">PV ' + Math.max(0, Math.ceil(p.hp)) + '/' + p.maxhp + ' · Armure ' + p.armor + '/' + p.armorMax + ' · Dégâts ' + pc(st.dmg) + ' · Cadence ' + pc(st.rate) + ' · Vitesse ' + pc(st.spd) + ' · Crit ' + pc(st.crit) + (p.weapon ? ' · Arme : ' + p.weapon.name : '') + '</span>';
+    $('invInfo').innerHTML = '<b class="nm" style="color:' + d.col + '">' + d.name.toUpperCase() + '</b><span class="cl">' + d.cls + ' · Niv. ' + p.level + '</span><span class="tx">' + d.classTxt + '</span><span class="tx" style="color:#ffd23a">★ ' + d.ultName + ' — <u>' + d.ultTxt + '</u></span>' + '';
     const box = $('invSlots'); box.innerHTML = '';
     for (const [k, label, col] of SLOTS) {
       const e = p.slots[k], el = document.createElement('button'); el.className = 'slot' + (inv.sel === k ? ' sel' : '') + (e && e.keys.length > 1 ? ' dual' : '');
@@ -285,32 +281,26 @@
     } else {
       $('invNew').innerHTML = inv.sel && p.slots[inv.sel] ? '<small>SÉLECTION</small><b style="color:' + p.slots[inv.sel].it.col + '">' + p.slots[inv.sel].it.name + '</b><span>' + p.slots[inv.sel].it.desc + '</span><div>' + chips(p.slots[inv.sel].it) + '</div>' : '<small>INVENTAIRE</small><span>Touche un module pour le sélectionner, puis « Retirer » pour le poser au sol. Les modules à double emplacement occupent deux cases.</span>';
       if (inv.sel && p.slots[inv.sel]) btns += '<button class="btn alt" id="invDrop">Retirer</button>';
-      btns += '<button class="btn" id="invClose">Fermer</button>';
+      btns += inv.pause ? '<button class="btn" id="invClose">Reprendre</button><button class="btn alt" id="invOpt">Options</button><button class="btn alt" id="invQuit">Quitter</button>' : '<button class="btn" id="invClose">Fermer</button>';
     }
     $('invBtns').innerHTML = btns;
     if ($('invOk')) $('invOk').onclick = () => { const r = req; game.uiReq = null; g.resolveEquip(r.it, nkeys, r.commit); closeInv(); };
     if ($('invNo')) $('invNo').onclick = () => closeInv();
     if ($('invDrop')) $('invDrop').onclick = () => { g.removeModule(inv.sel); inv.sel = null; renderInv(); };
     if ($('invClose')) $('invClose').onclick = () => closeInv();
+    if ($('invOpt')) $('invOpt').onclick = () => openOpts('pause');
+    if ($('invQuit')) $('invQuit').onclick = () => { closeInv(); running = false; show('title'); };
   }
-  $('btnInv').onclick = () => { audio(); if (inv) closeInv(); else openInv(null); };
-  $('btnPInv').onclick = () => openInv(null);
   $('hackX').onclick = () => { if (hack) closeHack(null); };
-  function renderPauseStats() {
-    const g = game, box = $('pStats'); if (!g || !box) return; const p = g.p, st = p.st, d = g.def;
-    const row = (k, v) => '<div class="r"><span>' + k + '</span><b>' + v + '</b></div>';
-    const pc = x => Math.round(x * 100) + ' %';
-    const dmg = Math.round(st.dmg * 100), wn = p.weapon ? p.weapon.name : 'Arme de base';
-    const c0 = '<div class="col wide"><h3 style="color:' + d.col + '">' + d.name.toUpperCase() + ' · ' + d.cls + '</h3><span class="it">' + d.classTxt + '</span><span class="it" style="color:#ffd23a">★ ' + d.ultName + ' : <span style="color:#cdb8ee">' + d.ultTxt + '</span></span><span class="it" style="opacity:.6;font-style:italic">' + (d.motto || '') + '</span></div>';
-    const c1 = '<div class="col stats"><h3>STATISTIQUES</h3>' +
-      row('Niveau', p.level + ' (' + p.xp + '/' + p.xpNext + ')') + row('PV', Math.max(0, Math.ceil(p.hp)) + '/' + p.maxhp) + row('Armure', p.armor + '/' + p.armorMax) +
-      row('Arme', wn) + row('Dégâts', pc(st.dmg)) + row('Cadence', pc(st.rate)) + row('Vitesse', pc(st.spd)) + row('Critique', pc(st.crit)) + row('Sauts', st.jumps) +
-      row('Clés / Pièces', p.keys + ' / ' + p.coins) + row('Secteur', g.floor + '/6') + '</div>';
-    const names = [].concat(p.items.map(i => '<span class="it" style="color:' + (i.col || '#fff') + '">• ' + i.name + '</span>'), p.ups.map(id => { const u = UPGRADES.find(q => q.id === id); return u ? '<span class="it" style="color:' + u.col + '">▸ ' + u.name + '</span>' : ''; }));
-    const c2 = '<div class="col"><h3>OBJETS &amp; AMÉLIORATIONS</h3>' + (names.length ? names.join('') : '<span class="it">Aucun pour l\'instant</span>') + '</div>';
-    box.innerHTML = c0 + c1 + c2;
+  function setPause(v) { if (v) { if (!inv && !paused) openInv(null, true); } else if (inv && inv.pause) closeInv(); }
+  function renderStats() {
+    const g = game, p = g.p, st = p.st, d = g.def, pc = x => Math.round(x * 100) + ' %';
+    const rk = RANKS.filter(q => q[0] <= p.level).pop(), tl = (k, v) => '<div><small>' + k + '</small><b>' + v + '</b></div>';
+    $('invStatsTop').innerHTML = '<div class="lv" style="--c:' + rk[2] + '"><b>NIV. ' + p.level + '</b><span class="rk">' + rk[1] + '</span><span class="xb"><i style="width:' + Math.round(100 * p.xp / p.xpNext) + '%"></i></span><small>' + p.xp + ' / ' + p.xpNext + ' XP</small></div>' +
+      '<div class="tiles">' + tl('PV', Math.max(0, Math.ceil(p.hp)) + '/' + p.maxhp) + tl('ARMURE', p.armor + '/' + p.armorMax) + tl('DÉGÂTS', pc(st.dmg)) + tl('CADENCE', pc(st.rate)) + tl('VITESSE', pc(st.spd)) + tl('CRITIQUE', pc(st.crit)) + tl('SAUTS', st.jumps) + tl('ARME', p.weapon ? p.weapon.name : 'De base') + tl('CLÉS', p.keys) + tl('PIÈCES', p.coins) + tl('SECTEUR', g.floor + '/6') + '</div>';
+    const names = [].concat(p.items.map(i => '<span style="color:' + (i.col || '#fff') + '">• ' + i.name + '</span>'), p.ups.map(id => { const u = UPGRADES.find(q => q.id === id); return u ? '<span style="color:' + u.col + '">▸ ' + u.name + '</span>' : ''; }));
+    $('invList').innerHTML = names.length ? '<h3>OBJETS &amp; AMÉLIORATIONS</h3>' + names.join('') : '';
   }
-  function setPause(v) { paused = v; $('pauseBox').hidden = !v; Input.reset(); Music.sync(); if (v) renderPauseStats(); }
   function audio() { Sound.init(); Music.sync(); }
   function renderAch() {
     $('achList').innerHTML = ACH.map(a => '<li class="' + (ach[a.id] ? 'ok' : '') + '"><b>' + (ach[a.id] ? '★ ' : '☆ ') + a.name + '</b><span>' + a.desc + '</span></li>').join('');
@@ -344,7 +334,7 @@
     if (save) restore(save);
     lastFloor = 0;
     Input.reset(); running = true; paused = false; acc = 0; last = 0;
-    $('pauseBox').hidden = true; $('lvlBox').hidden = true; choosing = null; radio = null; hack = null; inv = null; $('invBox').hidden = true; $('hackBox').hidden = true; mapOpen = false; mapSel = false; $('mapBox').hidden = true; radioQ.length = 0; $('radio').hidden = true; finalOk = false; winSaid = false; lastBoss = 0; $('hud').hidden = false;
+    $('lvlBox').hidden = true; choosing = null; radio = null; hack = null; inv = null; $('invBox').hidden = true; $('hackBox').hidden = true; mapOpen = false; mapSel = false; $('mapBox').hidden = true; radioQ.length = 0; $('radio').hidden = true; finalOk = false; winSaid = false; lastBoss = 0; $('hud').hidden = false;
     SCR.forEach(s => $(s).hidden = true);
     setShown = false;
   }
@@ -379,13 +369,13 @@
   /* ---------- Clavier / souris ---------- */
   addEventListener('keydown', e => {
     if (radio) { if (!['F5', 'F12'].includes(e.code)) { if (['Enter', 'Space', 'KeyZ', 'KeyX', 'KeyJ', 'KeyK', 'Escape', 'ArrowUp', 'KeyW'].includes(e.code)) { e.preventDefault(); radioAdvance(); } return; } }
-    if (inv) { if (['Escape', 'KeyI', 'Tab'].includes(e.code)) { e.preventDefault(); closeInv(); } return; }
-    if (e.code === 'KeyI' && running && !paused && !radio && !choosing) { e.preventDefault(); openInv(null); return; }
+    if (inv) { if (['Escape', 'KeyI', 'Tab', 'KeyP'].includes(e.code)) { e.preventDefault(); closeInv(); } return; }
+    if (e.code === 'KeyI' && running && !paused && !radio && !choosing) { e.preventDefault(); openInv(null, true); return; }
     if (hack) { const hm = { ArrowUp: 0, KeyW: 0, Digit1: 0, ArrowLeft: 1, KeyA: 1, Digit2: 1, ArrowRight: 2, KeyD: 2, Digit3: 2, ArrowDown: 3, KeyS: 3, Digit4: 3 }[e.code]; if (hm !== undefined) { e.preventDefault(); hackPress(hm); } else if (e.code === 'Escape') closeHack(null); return; }
     if (mapOpen) { if (['KeyM', 'Escape', 'Enter', 'Space', 'Tab'].includes(e.code)) { e.preventDefault(); toggleMap(false); } return; }
     if (e.code === 'KeyM' && running && !paused) { e.preventDefault(); toggleMap(true); return; }
     if (choosing && ['Digit1', 'Digit2', 'Digit3'].includes(e.code)) { pickUp(+e.code.slice(5) - 1); return; }
-    if (e.code === 'Escape' || e.code === 'KeyP') { if (choosing) return; if (running) setPause(!paused); return; }
+    if (e.code === 'Escape' || e.code === 'KeyP') { if (choosing) return; if (running) setPause(true); return; }
     if (e.code === 'Enter') { if (!$('title').hidden) $('btnPlay').click(); else if (!$('select').hidden) $('btnGo').click(); else if (!$('over').hidden) $('btnAgain').click(); return; }
     const k = KEYMAP[e.code]; if (!k || !running) return;
     e.preventDefault(); audio(); Input.set(k, 1);
