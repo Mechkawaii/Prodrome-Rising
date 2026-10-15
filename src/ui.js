@@ -426,7 +426,7 @@
   // fond d'écran titre : étoiles animées légères
   requestAnimationFrame(frame);
   $('best').textContent = best ? 'Record ' + Math.round(best) : '';
-  document.addEventListener('visibilitychange', () => { const c = Sound.ctx; if (!c) return; if (document.hidden) { c.suspend(); } else if (!paused) c.resume(); });
+  document.addEventListener('visibilitychange', () => { const c = Sound.ctx; if (!c) return; if (document.hidden) { c.suspend(); } else c.resume(); });
   const fsEl = document.documentElement, canFs = !!(fsEl.requestFullscreen || fsEl.webkitRequestFullscreen);
   if (canFs) {
     $('btnFs').hidden = false;
