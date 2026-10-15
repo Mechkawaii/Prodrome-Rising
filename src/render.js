@@ -204,7 +204,7 @@ function renderGame(ctx, g, big) {
       ctx.globalAlpha = 1; drawGlow(ctx, dx + T / 2, dy + T, 20, doorCol, .22);
     }
     const LB = { start: ['DEPART', '#cdb8ee'], combat: ['COMBAT', '#ff6a8a'], item: ['OBJET', '#ffd23a'], heal: ['SOIN', '#ff5cc8'], boss: ['BOSS', '#ff3a6a'], shop: ['BOUTIQUE', '#ffe38a'], vault: ['CACHE', '#8ee8ff'], challenge: ['DEFI', '#ff9a4a'] }[dd.nr.type];
-    drawText(ctx, dd.pre + LB[0], side ? W - 2 : (dy - 9 - camY < 78 && dy - 9 - camY > -10 ? 80 : 2), dy - 9, dd.nr.visited ? '#7a6a98' : LB[1], 1, side ? 'r' : 'l');
+    drawText(ctx, dd.pre + (dd.nr.visited ? LB[0] : '???'), side ? W - 2 : (dy - 9 - camY < 78 && dy - 9 - camY > -10 ? 80 : 2), dy - 9, '#7a6a98', 1, side ? 'r' : 'l');
   }
 
   // mines
@@ -387,7 +387,7 @@ function drawHUD(ctx, g) {
   for (const q of g.rooms) {
     if (!known(q.i)) continue;
     const [x, y] = cxy(q);
-    const col = q.type === 'boss' ? '#ff3a6a' : q.type === 'item' ? '#ffd23a' : q.type === 'heal' ? '#ff5cc8' : q.type === 'shop' ? '#ffe38a' : q.type === 'vault' ? '#8ee8ff' : q.type === 'challenge' ? '#ff9a4a' : q.type === 'start' ? '#8a7ab0' : q.cleared ? '#5a4a80' : '#c04060';
+    const col = !q.visited ? '#4a3d6e' : q.type === 'boss' ? '#ff3a6a' : q.type === 'item' ? '#ffd23a' : q.type === 'heal' ? '#ff5cc8' : q.type === 'shop' ? '#ffe38a' : q.type === 'vault' ? '#8ee8ff' : q.type === 'challenge' ? '#ff9a4a' : q.type === 'start' ? '#8a7ab0' : q.cleared ? '#5a4a80' : '#c04060';
     ctx.fillStyle = '#12081f'; ctx.fillRect(x - 1, y - 1, 9, 7);
     const th = q.rows > ROWS ? ph + 5 : 5;
     if (q.rows > ROWS) { ctx.fillStyle = '#12081f'; ctx.fillRect(x - 1, y + 5, 9, ph - 4); }
@@ -435,12 +435,12 @@ function drawBigMap(cx, g) {
   }
   for (const q of g.rooms) {
     if (!known(q.i)) continue; const [x, y] = pos(q), tall = q.rows > ROWS, th = tall ? chh + bh : bh;
-    const base = COL[q.type] || (q.cleared ? '#5a4a80' : '#c04060');
+    const base = !q.visited ? '#3a3058' : (COL[q.type] || (q.cleared ? '#5a4a80' : '#c04060'));
     cx.fillStyle = '#12081f'; cx.fillRect(x - 2, y - 2, bw + 4, th + 4);
     cx.globalAlpha = q.visited ? 1 : .5; cx.fillStyle = base; cx.fillRect(x, y, bw, th); cx.globalAlpha = 1;
     cx.fillStyle = 'rgba(0,0,0,.28)'; cx.fillRect(x, y + th - 3, bw, 3);
     if (tall) { cx.fillStyle = 'rgba(255,255,255,.28)'; for (let k = 1; k < 4; k++) cx.fillRect(x + 4 + (k % 2) * (bw - 18), y + Math.round(th * k / 4), 14, 2); cx.fillStyle = 'rgba(0,0,0,.35)'; cx.fillRect(x, y + bh, bw, 2); }
-    drawText(cx, tall ? 'VERTICAL' : (NAME[q.type] || ''), x + bw / 2, y + 3, '#0d0818', 1, 'c');
+    drawText(cx, !q.visited ? (tall ? 'VERTICAL' : '?') : tall ? 'VERTICAL' : (NAME[q.type] || ''), x + bw / 2, y + 3, q.visited ? '#0d0818' : '#8a7ab0', 1, 'c');
     if (q.cleared && q.type === 'combat') drawText(cx, 'OK', x + bw / 2, y + bh - 9, '#0d0818', 1, 'c');
     if (q === g.room) { if (g.frame % 40 < 28) { cx.fillStyle = '#fff'; const hy = tall ? Math.min(th - 8, Math.max(0, Math.round(g.p.cy / (q.rows * T) * th) - 3)) : bh / 2 - 1; cx.fillRect(x + bw / 2 - 3, y + hy, 7, 7); cx.fillStyle = '#12081f'; cx.fillRect(x + bw / 2 - 1, y + hy + 2, 3, 3); } }
   }

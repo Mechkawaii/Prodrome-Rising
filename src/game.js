@@ -379,20 +379,28 @@ class Game {
     this.banner = 'Prodrome vaincu !'; this.bannerT = 150;
   }
   dropCoins(x, y, n) { for (let i = 0; i < n; i++) this.pickups.push({ type: 'coin', x: x - 2, y: y - 2, vx: rr(-1.4, 1.4), vy: -rr(2, 3.6), age: 0, bob: rnd() * 6 }); }
+  // point d'appui valide (sol ou plateforme) près d'une abscisse, dans l'étage où se trouve le joueur
+  standSpot(prefX) {
+    const r = this.room, p = this.p; if (!r.spawnPts || !r.spawnPts.length) return null;
+    let pts = r.spawnPts.filter(q => Math.abs(q[1] - p.y) < 110 && q[0] > 28 && q[0] < W - 40); if (!pts.length) pts = r.spawnPts;
+    pts = pts.slice().sort((a, b) => Math.abs(a[0] - prefX) - Math.abs(b[0] - prefX));
+    return pts[Math.min(pts.length - 1, ri(0, 2))];
+  }
   clearRoom() {
     const r = this.room, p = this.p; r.cleared = true; r.locked = false; this.locked = false; this.roomsCleared++;
     this.sfx('door'); this.shake(2); this.addXp(2);
     if (r.type === 'combat') {
       if (p.st.regenShield) p.armor = Math.min(p.armorMax, p.armor + p.st.regenShield);
       if (this.def.roomArmor) p.armor = Math.min(p.armorMax, p.armor + this.def.roomArmor);
-      this.dropCoins(W / 2, 80, ri(3, 5));
+      const tallR = r.rows > ROWS, dx = tallR ? clamp(p.cx, 28, W - 40) : W / 2, dy = tallR ? p.cy - 22 : 90;
+      this.dropCoins(dx, dy - 10, ri(3, 5));
       const k = rnd();
-      if (p.hp < p.maxhp && k < .45) this.pickups.push({ type: 'heart', x: W / 2 - 4, y: 90, vy: -1, bob: 0 });
-      else if (k < .72) this.pickups.push({ type: 'shield', x: W / 2 - 4, y: 90, vy: -1, bob: 0 });
-      if (rnd() < .10) this.pickups.push({ type: 'key', x: W / 2 + 6, y: 90, vy: -1, bob: 0 });
-      if (rnd() < .20) this.pickups.push({ type: 'crate', x: ri(60, 250), y: 160 - 14, bob: rnd() * 6 });
-      if (rnd() < .3) { const owned = new Set(p.items.map(o => o.id)), pl = ITEMS.filter(o => !owned.has(o.id)); if (pl.length) this.pickups.push({ type: 'item', item: pick(pl), x: W / 2 - 40, y: 160 - 14, group: 'f' + r.i, bob: 0 }); }
-      if (r.depth % 2 === 1 || rnd() < .25) this.pickups.push({ type: 'cell', x: W / 2 + 20, y: 90, vy: -1, bob: 0 });
+      if (p.hp < p.maxhp && k < .45) this.pickups.push({ type: 'heart', x: dx - 4, y: dy, vy: -1, bob: 0 });
+      else if (k < .72) this.pickups.push({ type: 'shield', x: dx - 4, y: dy, vy: -1, bob: 0 });
+      if (rnd() < .10) this.pickups.push({ type: 'key', x: dx + 6, y: dy, vy: -1, bob: 0 });
+      if (rnd() < .20) { const q = this.standSpot(ri(60, 250)); if (q) this.pickups.push({ type: 'crate', x: q[0], y: q[1], bob: rnd() * 6 }); }
+      if (rnd() < .3) { const owned = new Set(p.items.map(o => o.id)), pl = ITEMS.filter(o => !owned.has(o.id)); const q = this.standSpot(W / 2 - 40); if (pl.length && q) this.pickups.push({ type: 'item', item: pick(pl), x: q[0], y: q[1], group: 'f' + r.i, bob: 0 }); }
+      if (r.depth % 2 === 1 || rnd() < .25) this.pickups.push({ type: 'cell', x: clamp(dx + 20, 24, W - 32), y: dy, vy: -1, bob: 0 });
     } else if (r.type === 'challenge') {
       this.dropCoins(W / 2, 80, 7); this.setupItemRoom(r, false); this.banner = 'Défi réussi !'; this.bannerT = 120;
     }
@@ -543,10 +551,10 @@ class Game {
       if (mag) {
         const dx = p.cx - (k.x + 4), dy = p.cy - (k.y + 4), dd = Math.hypot(dx, dy) || 1, R = 46 + p.st.magnet * 22;
         if (dd < R && (k.age = (k.age || 0) + 1) > 14) { const sp = 1.4 + (R - dd) / R * 2.6; k.x += dx / dd * sp; k.y += dy / dd * sp; k.vy = undefined; }
-        else if (k.vy !== undefined) { k.vy += .12; k.y += k.vy; if (k.y > 160 - 8) { k.y = 160 - 8; k.vy = undefined; } }
+        else if (k.vy !== undefined) { k.vy += .12; k.y += k.vy; const g0 = this.room.rows > ROWS ? this.groundY(k.x + 4, k.y - 4) : 160; if (k.y > g0 - 8) { k.y = g0 - 8; k.vy = undefined; } }
         k.near = Math.hypot(dx, dy) < 14;
         if (!k.near) continue;
-      } else if (k.vy !== undefined) { k.vy += .12; k.y += k.vy; if (k.y > 160 - 8) { k.y = 160 - 8; k.vy = 0; k.vy = undefined; } }
+      } else if (k.vy !== undefined) { k.vy += .12; k.y += k.vy; const g0 = this.room.rows > ROWS ? this.groundY(k.x + 4, k.y - 4) : 160; if (k.y > g0 - 8) { k.y = g0 - 8; k.vy = undefined; } }
       if (!mag) { const near = Math.abs(k.x + 4 - p.cx) < 14 && Math.abs(k.y + 4 - p.cy) < 16; k.near = near; if (!near) continue; }
       if (k.type === 'shop') {
         if (Input.jumpPressed) {
