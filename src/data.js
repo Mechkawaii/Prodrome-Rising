@@ -43,7 +43,7 @@ const HEROES = [
     classTxt: 'Rapide comme l\'éclair : très mobile, et elle esquive deux fois de suite (deux charges d\'esquive).',
     ultName: 'Disruption visuelle', ultTxt: 'Rend tous les Mechkawaii invisibles 7 s : les Prodromes ne peuvent plus la prendre pour cible.',
     motto: '',
-    init(p) { p.st.pierce = 1; p.st.spd *= 1.12; p.dashMax = 2; p.dash = 2; },
+    init(p) { p.st.pierce = 1; bump(p, 'spd', 1.12); p.dashMax = 2; p.dash = 2; },
     fire(g, p, a) { g.shootP(p, a.ang + rr(-.04, .04), { speed: 3.8, dmg: .95, color: '#b6ff4a', life: 70 }); g.sfx('shoot'); },
     ult(g, p) { p.buff.ghost = 420; g.sfx('ult'); g.fx(p.cx, p.cy, 24, '#b6ff4a', 2.5); g.text(p.cx, p.y - 10, 'INVISIBLE', '#b6ff4a'); }
   },
@@ -126,11 +126,11 @@ const HERO = {}; HEROES.forEach(h => HERO[h.id] = h);
 
 /* ---------- Objets ---------- */
 const ITEMS = [
-  { id: 'turbo', name: 'Extrudeur Turbo', desc: 'Cadence de tir +25 %.', col: '#ff9a2a', g: 0, apply: p => p.st.rate *= 1.25 },
-  { id: 'cart', name: 'Cartouches PLAstofer', desc: 'Dégâts +30 %.', col: '#ff4a3a', g: 1, apply: p => p.st.dmg *= 1.3 },
+  { id: 'turbo', name: 'Extrudeur Turbo', desc: 'Cadence de tir +15 %.', col: '#ff9a2a', g: 0, apply: p => bump(p, 'rate', 1.25) },
+  { id: 'cart', name: 'Cartouches PLAstofer', desc: 'Dégâts +18 %.', col: '#ff4a3a', g: 1, apply: p => bump(p, 'dmg', 1.3) },
   { id: 'spore', name: 'Spore d\'Izanami', desc: 'Tirs légèrement autoguidés.', col: '#7dffb0', g: 2, apply: p => p.st.homing = Math.max(p.st.homing, .05) },
   { id: 'coeur', name: 'Cœur d\'Izanami', desc: '+1 PV maximum et soin complet.', col: '#ff5cc8', g: 3, apply: (p, g) => { p.maxhp++; p.hp = p.maxhp; } },
-  { id: 'semelle', name: 'Semelles à ressort', desc: 'Vitesse de course +15 %.', col: '#38a8ff', g: 0, apply: p => p.st.spd *= 1.15 },
+  { id: 'semelle', name: 'Semelles à ressort', desc: 'Vitesse de course +9 %.', col: '#38a8ff', g: 0, apply: p => bump(p, 'spd', 1.15) },
   { id: 'propul', name: 'Propulseur dorsal', desc: '+1 saut en l\'air.', col: '#37e0ff', g: 1, apply: p => p.st.jumps++ },
   { id: 'perf', name: 'Cellules perforantes', desc: 'Les tirs traversent 1 ennemi de plus.', col: '#b36bff', g: 2, apply: p => p.st.pierce++ },
   { id: 'ric', name: 'Rebond de PLAstofer', desc: 'Les tirs ricochent 2 fois sur les murs.', col: '#ffd23a', g: 3, apply: p => p.st.bounce += 2 },
@@ -144,12 +144,12 @@ const ITEMS = [
   { id: 'blindage', name: 'Plaques de blindage', desc: '+2 armure maximum et +2 armure.', col: '#cfd2e4', g: 1, apply: p => { p.armorMax += 2; p.armor = Math.min(p.armorMax, p.armor + 2); } },
   { id: 'chassis', name: 'Châssis renforcé', desc: '+2 PV maximum et soin de 2 PV.', col: '#ff5cc8', g: 3, apply: (p, g) => { p.maxhp += 2; g.heal(p, 2); } },
   { id: 'megacond', name: 'Supercondensateur', desc: 'Coup unique chargé à +60 % et charge +25 % plus rapide.', col: '#ffe38a', g: 0, apply: p => { p.ult = Math.min(100, p.ult + 60); p.st.ultRate *= 1.25; } },
-  { id: 'thermo', name: 'Visée thermique', desc: 'Critiques +10 %, dégâts +10 %.', col: '#ff4a3a', g: 2, apply: p => { p.st.crit += .1; p.st.dmg *= 1.1; } },
+  { id: 'thermo', name: 'Visée thermique', desc: 'Critiques +10 %, dégâts +6 %.', col: '#ff4a3a', g: 2, apply: p => { p.st.crit += .1; bump(p, 'dmg', 1.1); } },
   { id: 'bouclier', name: 'Pack d\'armure', desc: '+1 armure maximum et +2 armure.', col: '#38a8ff', g: 1, apply: p => { p.armorMax += 1; p.armor = Math.min(p.armorMax, p.armor + 2); } },
   { id: 'aimant', name: 'Aimant à boulons', desc: 'Attire boulons, cœurs, armure et énergie de plus loin.', col: '#ffd23a', g: 2, apply: p => p.st.magnet++ },
   { id: 'vamp', name: 'Siphon de PV', desc: 'Restaure 1 PV toutes les quelques victimes.', col: '#ff5cc8', g: 0, apply: p => p.st.vamp = (p.st.vamp || 0) + 1 },
   { id: 'contre', name: 'Contre-mesure', desc: 'Une onde de choc repousse tout quand tu es touché.', col: '#8ee8ff', g: 3, apply: p => p.st.thorn = 1 },
-  { id: 'lourdes', name: 'Munitions lourdes', desc: 'Dégâts +50 %, cadence -10 %.', col: '#ff9a2a', g: 2, apply: p => { p.st.dmg *= 1.5; p.st.rate *= .9; } },
+  { id: 'lourdes', name: 'Munitions lourdes', desc: 'Dégâts +30 %, cadence -10 %.', col: '#ff9a2a', g: 2, apply: p => { bump(p, 'dmg', 1.5); bump(p, 'rate', .9); } },
   { id: 'gel', name: 'Gel d\'urgence', desc: 'Invulnérable plus longtemps après un coup.', col: '#b6ff4a', g: 1, apply: p => p.st.inv = (p.st.inv || 0) + 1 },
   { id: 'gaz', name: 'Gaz d\'Izanami', desc: 'Un nuage toxique blesse les ennemis proches.', col: '#9dff6a', g: 3, apply: p => p.st.gas++ }
 ];
@@ -240,10 +240,13 @@ const DIFFS = {
 };
 /* ---------- Niveaux : améliorations de châssis (3 au choix à chaque niveau) ---------- */
 const RANKS = [[1, 'RECRUE', '#cdb8ee'], [3, 'SOLDAT', '#6fd8ff'], [5, 'VETERAN', '#7dff6a'], [7, 'ELITE', '#ffd23a'], [9, 'LEGENDE', '#ff5cc8']];
+// bonus additifs avec rendement décroissant : au-delà d'un seuil, chaque bonus ne compte plus que pour 35 %
+const SOFTCAP = { dmg: 2, rate: 1.8, spd: 1.5 };
+function bump(p, k, x) { const d = (x - 1) * (x > 1 ? .6 : 1), cur = p.st[k]; p.st[k] = cur + (d > 0 && cur >= SOFTCAP[k] ? d * .35 : d); }
 const UPGRADES = [
-  { id: 'u_dmg', name: 'Calibre supérieur', desc: 'Dégâts +12 %.', col: '#ff6a2a', apply: p => p.st.dmg *= 1.12 },
-  { id: 'u_rate', name: 'Gâchette nerveuse', desc: 'Cadence de tir +10 %.', col: '#ffd23a', apply: p => p.st.rate *= 1.1 },
-  { id: 'u_spd', name: 'Servos nerveux', desc: 'Vitesse de déplacement +8 %.', col: '#6fd8ff', apply: p => p.st.spd *= 1.08 },
+  { id: 'u_dmg', name: 'Calibre supérieur', desc: 'Dégâts +7 %.', col: '#ff6a2a', apply: p => bump(p, 'dmg', 1.12) },
+  { id: 'u_rate', name: 'Gâchette nerveuse', desc: 'Cadence de tir +6 %.', col: '#ffd23a', apply: p => bump(p, 'rate', 1.1) },
+  { id: 'u_spd', name: 'Servos nerveux', desc: 'Vitesse de déplacement +5 %.', col: '#6fd8ff', apply: p => bump(p, 'spd', 1.08) },
   { id: 'u_hp', name: 'Châssis étoffé', desc: '+1 PV maximum et soigne 1 PV.', col: '#ff5cc8', apply: (p, g) => { p.maxhp++; g.heal(p, 1); } },
   { id: 'u_arm', name: 'Plaques additionnelles', desc: '+1 armure maximum et +1 armure.', col: '#37e0ff', apply: p => { p.armorMax++; p.armor = Math.min(p.armorMax, p.armor + 1); } },
   { id: 'u_crit', name: 'Visée affinée', desc: 'Critiques +7 %.', col: '#ffe38a', apply: p => p.st.crit += .07 },
@@ -255,7 +258,7 @@ const UPGRADES = [
   { id: 'u_key', name: 'Passe-partout', desc: '+1 clé de caisse.', col: '#e8eef0', ok: p => p.keys < 3, apply: p => p.keys++ }
 ];
 const SYNERGIES = [
-  { id: 's_surcharge', name: 'Surcharge', req: ['turbo', 'cart'], desc: 'Dégâts +15 %, cadence +10 %.', apply: p => { p.st.dmg *= 1.15; p.st.rate *= 1.1; } },
+  { id: 's_surcharge', name: 'Surcharge', req: ['turbo', 'cart'], desc: 'Dégâts +9 %, cadence +6 %.', apply: p => { bump(p, 'dmg', 1.15); bump(p, 'rate', 1.1); } },
   { id: 's_fantome', name: 'Rafale fantôme', req: ['perf', 'ric'], desc: '+1 perforation, +1 ricochet.', apply: p => { p.st.pierce++; p.st.bounce++; } },
   { id: 's_choc', name: 'Onde de choc', req: ['expl', 'ion'], desc: 'Explosions plus larges, recul accru.', apply: p => { p.st.explode += 6; p.st.kb += 1; } },
   { id: 's_essaim', name: 'Essaim', req: ['drone', 'spore'], desc: '+1 drone.', apply: p => p.st.drone++ },

@@ -443,8 +443,8 @@ class Game {
       if (p.hp < p.maxhp && k < .35) this.pickups.push({ type: 'heart', x: dx - 4, y: dy, vy: -1, bob: 0 });
       else if (k < .72) this.pickups.push({ type: 'shield', x: dx - 4, y: dy, vy: -1, bob: 0 });
       if (rnd() < .10) this.pickups.push({ type: 'key', x: dx + 6, y: dy, vy: -1, bob: 0 });
-      if (rnd() < .20) { const q = this.standSpot(ri(60, 250)); if (q) this.pickups.push({ type: 'crate', x: q[0], y: q[1], bob: rnd() * 6 }); }
-      if (rnd() < .3) { const owned = new Set(p.items.map(o => o.id).concat(this.def.armorCap ? ['blindage', 'bouclier'] : [])), pl = ITEMS.filter(o => !owned.has(o.id)); const q = this.standSpot(W / 2 - 40); if (pl.length && q) this.pickups.push({ type: 'item', item: pick(pl), x: q[0], y: q[1], group: 'f' + r.i, bob: 0 }); }
+      if (rnd() < .12) { const q = this.standSpot(ri(60, 250)); if (q) this.pickups.push({ type: 'crate', x: q[0], y: q[1], bob: rnd() * 6 }); }
+      if (rnd() < .16) { const owned = new Set(p.items.map(o => o.id).concat(this.def.armorCap ? ['blindage', 'bouclier'] : [])), pl = ITEMS.filter(o => !owned.has(o.id)); const q = this.standSpot(W / 2 - 40); if (pl.length && q) this.pickups.push({ type: 'item', item: pick(pl), x: q[0], y: q[1], group: 'f' + r.i, bob: 0 }); }
       if (r.depth % 2 === 1 || rnd() < .25) this.pickups.push({ type: 'cell', x: clamp(dx + 20, 24, W - 32), y: dy, vy: -1, bob: 0 });
     } else if (r.type === 'challenge') {
       this.dropCoins(W / 2, 80, 3); this.setupItemRoom(r, false); this.banner = 'Défi réussi !'; this.bannerT = 120;
@@ -458,7 +458,7 @@ class Game {
   addXp(n) {
     const p = this.p; if (p.level >= 30) return; p.xp += n;
     while (p.xp >= p.xpNext) {
-      p.xp -= p.xpNext; p.level++; p.xpNext = 8 + p.level * 3; this.pendingLevel++;
+      p.xp -= p.xpNext; p.level++; p.xpNext = 8 + p.level * 4 + (p.level > 6 ? (p.level - 6) * 3 : 0); this.pendingLevel++;
       this.flashT = 6; this.sfx('ult'); this.fx(p.cx, p.cy, 30, this.def.col, 3);
       const rk = RANKS.find(r => r[0] === p.level);
       this.text(p.cx, p.y - 14, rk ? 'GRADE : ' + rk[1] : 'NIVEAU ' + p.level, rk ? rk[2] : '#ffe38a');
