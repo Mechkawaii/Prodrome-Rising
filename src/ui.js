@@ -46,9 +46,27 @@
     b.onclick = () => select(h.id);
     grid.appendChild(b);
   });
+  /* Mechkawaii à débloquer : un nouveau par victoire */
+  const LOCKED = ['duke', 'khurt', 'faline', 'rasmus', 'rhoney'];
+  function totalWins() { let t = 0; for (const k in wins) t += wins[k] || 0; return t; }
+  function lockNeed(id) { const i = LOCKED.indexOf(id); return i < 0 ? 0 : i + 1; }
+  function isLocked(id) { return lockNeed(id) > totalWins(); }
+  function refreshLocks() {
+    grid.querySelectorAll('.hero').forEach(b => {
+      const lk = isLocked(b.dataset.id); b.classList.toggle('locked', lk);
+      b.querySelector('span').textContent = lk ? '???' : HERO[b.dataset.id].name;
+    });
+  }
   function select(id) {
     sel = id;
     const h = HERO[id];
+    refreshLocks();
+    if (isLocked(id)) {
+      grid.querySelectorAll('.hero').forEach(b => b.classList.toggle('on', b.dataset.id === id));
+      const d = $('heroInfo'); d.style.setProperty('--c', '#667');
+      d.innerHTML = '<div class="hn">??? <small>Mechkawaii verrouillé</small></div><p>Termine le jeu <b>' + lockNeed(id) + '</b> fois pour débloquer ce pilote (' + Math.min(totalWins(), lockNeed(id)) + '/' + lockNeed(id) + ').</p>';
+      return;
+    }
     grid.querySelectorAll('.hero').forEach(b => b.classList.toggle('on', b.dataset.id === id));
     const d = $('heroInfo');
     d.style.setProperty('--c', h.col);
@@ -362,6 +380,7 @@
   }
 
   function start(save) {
+    if (!save && isLocked(sel)) { select(sel); return; }
     if (save) { diffId = save.diff; dailyMode = !!save.daily; }
     game = new Game(save ? save.hero : sel, { diff: diffId, daily: dailyMode ? TODAY : 0 });
     if (save) restore(save);
@@ -378,7 +397,7 @@
     let rec;
     if (g.daily) { const k = 'mkw-ruins-daily-' + g.daily; rec = Math.round(Math.max(lsGet(k, 0), g.score)); lsSet(k, rec); }
     else { if (g.score > best) { best = Math.round(g.score); lsSet('mkw-abyss-best', best); } rec = best; }
-    if (win) { wins[g.def.id] = (wins[g.def.id] || 0) + 1; lsSet('mkw-ruins-wins', wins); const cardEl = grid.querySelector('[data-id="' + g.def.id + '"]'); if (cardEl) cardEl.classList.add('won'); }
+    if (win) { wins[g.def.id] = (wins[g.def.id] || 0) + 1; lsSet('mkw-ruins-wins', wins); const cardEl = grid.querySelector('[data-id="' + g.def.id + '"]'); if (cardEl) cardEl.classList.add('won'); refreshLocks(); }
     checkAch();
     $('overTitle').textContent = win ? 'Éclat de victoire' : 'Mechkawaii hors service';
     $('overTitle').className = win ? 'win' : 'lose';
