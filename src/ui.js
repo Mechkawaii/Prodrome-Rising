@@ -88,7 +88,7 @@
   const encIds = t => t === 'h' ? ['sheepard'].concat(HEROES.map(q => q.id)) : t === 'e' ? PRO_IDS.filter(i => ENEMY[i]) : BOSSES.map(q => q.id);
   function encSprite(t, id) {
     const c = document.createElement('canvas'); c.width = 16; c.height = 16; const x = c.getContext('2d'); x.imageSmoothingEnabled = false;
-    try { if (t === 'h' && Atlas.port[id] && Atlas.port[id].complete && Atlas.port[id].naturalWidth) { c.width = 56; c.height = 56; x.imageSmoothingEnabled = false; x.drawImage(Atlas.port[id], 0, 0); } else if (t === 'h' && id === 'sheepard') { x.fillStyle = '#0d1f1a'; x.fillRect(0, 0, 16, 16); x.fillStyle = '#3dffb0'; x.fillRect(3, 3, 10, 10); x.fillStyle = '#0d1f1a'; x.fillRect(4, 4, 8, 8); x.fillStyle = '#3dffb0'; x.fillRect(6, 6, 4, 4); } else x.drawImage((t === 'h' ? Atlas.hero[id] : Atlas.pro[id])[0].canvas(), 0, 0); } catch (e) { }
+    try { if (Atlas.port[id] && Atlas.port[id].complete && Atlas.port[id].naturalWidth) { c.width = 56; c.height = 56; x.imageSmoothingEnabled = false; x.drawImage(Atlas.port[id], 0, 0); } else if (t === 'h' && id === 'sheepard') { x.fillStyle = '#0d1f1a'; x.fillRect(0, 0, 16, 16); x.fillStyle = '#3dffb0'; x.fillRect(3, 3, 10, 10); x.fillStyle = '#0d1f1a'; x.fillRect(4, 4, 8, 8); x.fillStyle = '#3dffb0'; x.fillRect(6, 6, 4, 4); } else x.drawImage((t === 'h' ? Atlas.hero[id] : Atlas.pro[id])[0].canvas(), 0, 0); } catch (e) { }
     return c;
   }
   function encName(t, id) { return t === 'h' ? (id === 'sheepard' ? 'Sheepard' : HERO[id].name) : t === 'e' ? ENEMY[id].name : BOSSES.find(q => q.id === id).name; }
